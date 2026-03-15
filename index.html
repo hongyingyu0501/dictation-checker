@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>英语听写批改助手</title>
+  <title>英语听写批改助手 - AI智能版</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -12,6 +12,7 @@
       --primary-dark: #3a6fd8;
       --success: #22c55e;
       --error: #ef4444;
+      --warning: #f59e0b;
       --bg: #f0f4ff;
       --card: #ffffff;
       --text: #1e293b;
@@ -70,10 +71,64 @@
       margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
     }
 
-    /* ===== ANSWER INPUT ===== */
+    /* ===== TASK SELECTOR ===== */
+    .task-selector {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: var(--radius);
+      padding: 16px; margin-bottom: 16px;
+      color: white;
+    }
+    .task-selector h3 {
+      font-size: 14px; margin-bottom: 10px; opacity: 0.9;
+    }
+    .task-list {
+      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+    }
+    .task-chip {
+      background: rgba(255,255,255,0.2);
+      border: 2px solid transparent;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .2s;
+    }
+    .task-chip:hover { background: rgba(255,255,255,0.3); }
+    .task-chip.active {
+      background: white; color: #667eea; font-weight: 600;
+    }
+    .task-chip .count {
+      background: rgba(255,255,255,0.3);
+      border-radius: 10px; padding: 2px 6px;
+      font-size: 11px; margin-left: 4px;
+    }
+    .task-chip.active .count { background: #667eea; color: white; }
+    .add-task-btn {
+      background: rgba(255,255,255,0.3);
+      border: 2px dashed rgba(255,255,255,0.5);
+    }
+
+    /* ===== INPUT METHODS ===== */
+    .input-methods {
+      display: flex; gap: 8px; margin-bottom: 12px;
+    }
+    .method-btn {
+      flex: 1; padding: 10px; border-radius: 10px;
+      border: 2px solid var(--border); background: white;
+      font-size: 13px; cursor: pointer; transition: all .2s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .method-btn:hover { border-color: var(--primary); }
+    .method-btn.active {
+      border-color: var(--primary); background: #eff6ff; color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* ===== TEXTAREA ===== */
     textarea {
       width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
-      padding: 12px; font-size: 15px; resize: vertical; min-height: 130px;
+      padding: 12px; font-size: 15px; resize: vertical; min-height: 120px;
       font-family: inherit; color: var(--text); outline: none; transition: border .2s;
       line-height: 1.65;
     }
@@ -90,6 +145,7 @@
     .btn-primary { background: var(--primary); color: white; }
     .btn-primary:hover { background: var(--primary-dark); }
     .btn-success { background: var(--success); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
     .btn-secondary {
       background: var(--bg); color: var(--text);
       border: 1.5px solid var(--border);
@@ -98,6 +154,9 @@
     .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
     .btn-row { display: flex; gap: 10px; }
     .btn-row .btn { flex: 1; }
+    .btn-small {
+      padding: 8px 14px; font-size: 13px; width: auto;
+    }
 
     /* ===== CAMERA ===== */
     .camera-wrap {
@@ -148,6 +207,25 @@
     .ocr-status.ready   { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
     .ocr-status.loading { background: #f8faff; border-color: #dce8ff; color: var(--muted); }
 
+    /* ===== RECOGNIZED TEXT PREVIEW ===== */
+    .recognized-preview {
+      background: #f8faff; border: 1px solid #e0e9ff; border-radius: 10px;
+      padding: 12px; margin-bottom: 12px; font-size: 14px;
+    }
+    .recognized-preview h4 {
+      font-size: 12px; color: var(--muted); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .recognized-preview .text-content {
+      color: var(--text); line-height: 1.6;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    .edit-btn {
+      margin-top: 8px; padding: 6px 12px;
+      background: white; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 12px; cursor: pointer;
+    }
+
     /* ===== RESULT ===== */
     .result-meta {
       display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
@@ -184,18 +262,7 @@
     .wrong-item .arrow   { color: var(--muted); }
     .wrong-item .correct-word { color: var(--success); font-weight: 700; }
 
-    .recognized-text {
-      background: #f8faff; border-radius: 10px; padding: 12px;
-      font-size: 13px; color: var(--muted); border: 1px solid #e0e9ff;
-      margin-bottom: 14px; word-break: break-all; line-height: 1.7;
-    }
-    .recognized-text strong { color: var(--text); display: block; margin-bottom: 4px; }
-
     /* ===== STATS ===== */
-    .stats-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 14px;
-    }
     .stats-summary {
       display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
       margin-bottom: 18px;
@@ -267,6 +334,32 @@
       color: #92400e; font-size: 11px; padding: 3px 9px;
       border-radius: 20px; margin-bottom: 10px;
     }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 300;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: white; border-radius: 16px;
+      padding: 24px; width: 100%; max-width: 400px;
+      max-height: 80vh; overflow-y: auto;
+    }
+    .modal h3 { margin-bottom: 16px; font-size: 18px; }
+    .modal input {
+      width: 100%; padding: 12px; border: 2px solid var(--border);
+      border-radius: 10px; font-size: 15px; margin-bottom: 16px;
+    }
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-actions .btn { flex: 1; }
+
+    /* Image preview */
+    .image-preview {
+      max-width: 100%; border-radius: 8px; margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
@@ -274,18 +367,30 @@
 <!-- Loading overlay -->
 <div class="overlay" id="loadingOverlay">
   <div class="big-spinner"></div>
-  <p id="loadingMsg">正在识别手写文字...</p>
+  <p id="loadingMsg">正在识别...</p>
 </div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
+
+<!-- New Task Modal -->
+<div class="modal-overlay" id="newTaskModal">
+  <div class="modal">
+    <h3>📝 新建听写任务</h3>
+    <input type="text" id="newTaskName" placeholder="输入任务名称，如：Unit 3 单词听写">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeNewTaskModal()">取消</button>
+      <button class="btn btn-primary" onclick="createNewTask()">创建</button>
+    </div>
+  </div>
+</div>
 
 <!-- Header -->
 <header>
   <div class="logo">📝</div>
   <div>
     <h1>听写批改助手</h1>
-    <p>高中英语 · 手写识别 · 自动批改</p>
+    <p>AI智能识别 · 任务管理 · 精准批改</p>
   </div>
 </header>
 
@@ -293,77 +398,151 @@
 <div class="tabs">
   <button class="tab-btn active" onclick="switchTab('setup')">✏️ 设置答案</button>
   <button class="tab-btn" onclick="switchTab('scan')">📷 扫描批改</button>
-  <button class="tab-btn" onclick="switchTab('stats')">📊 错误统计</button>
+  <button class="tab-btn" onclick="switchTab('stats')">📊 统计</button>
 </div>
 
 <!-- ====== TAB 1: 设置答案 ====== -->
 <div class="panel active" id="panel-setup">
+  <!-- Task Selector -->
+  <div class="task-selector">
+    <h3>📚 当前任务</h3>
+    <div class="task-list" id="taskList">
+      <!-- Tasks will be rendered here -->
+    </div>
+  </div>
+
+  <!-- Answer Input Methods -->
   <div class="card">
-    <div class="card-title">📋 本次听写单词/句子</div>
-    <div class="tip-tag">💡 每行一个单词或词组，支持短句</div>
-    <textarea id="answerInput" placeholder="例如：
+    <div class="card-title">📋 录入本次听写答案</div>
+    <div class="input-methods">
+      <button class="method-btn active" onclick="setAnswerMethod('manual')" id="btn-manual">
+        ⌨️ 手动输入
+      </button>
+      <button class="method-btn" onclick="setAnswerMethod('camera')" id="btn-camera">
+        📷 拍照识别
+      </button>
+      <button class="method-btn" onclick="setAnswerMethod('file')" id="btn-file">
+        📄 文件导入
+      </button>
+    </div>
+
+    <!-- Manual Input -->
+    <div id="answer-manual">
+      <div class="tip-tag">💡 每行一个单词或句子，支持中英文混合</div>
+      <textarea id="answerInput" placeholder="例如：
 appreciate
 enthusiasm
 accomplish
 make progress
 be responsible for
+苹果 apple
 ..."></textarea>
-    <div class="hint">共 <span id="wordCount">0</span> 个词条 · 每行一个</div>
+      <div class="hint">共 <span id="wordCount">0</span> 个词条</div>
+    </div>
+
+    <!-- Camera Input -->
+    <div id="answer-camera" style="display:none;">
+      <div class="tip-tag">📷 对准答案纸拍照，AI自动识别</div>
+      <div class="camera-wrap" style="aspect-ratio: 3/4;">
+        <video id="answerVideo" autoplay playsinline muted></video>
+        <div class="camera-overlay">
+          <div class="scan-frame"><div class="scan-line"></div></div>
+          <div class="scan-hint">将答案纸放入框内</div>
+        </div>
+      </div>
+      <canvas id="answerCanvas" style="display:none;"></canvas>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="captureAnswerImage()">
+        📸 拍照识别答案
+      </button>
+    </div>
+
+    <!-- File Input -->
+    <div id="answer-file" style="display:none;">
+      <div class="tip-tag">📄 支持 .txt 文件，每行一个单词</div>
+      <input type="file" id="answerFileInput" accept=".txt,.doc,.docx" style="display:none;" onchange="handleAnswerFile(event)">
+      <button class="btn btn-secondary" onclick="document.getElementById('answerFileInput').click()">
+        📁 选择文件
+      </button>
+    </div>
+
+    <!-- Recognized Preview -->
+    <div class="recognized-preview" id="answerPreview" style="display:none;">
+      <h4>🤖 AI识别结果（可编辑）</h4>
+      <textarea id="recognizedAnswerText" style="min-height:100px; margin-bottom:8px;"></textarea>
+      <button class="edit-btn" onclick="useRecognizedAnswer()">✅ 使用此答案</button>
+    </div>
   </div>
 
+  <!-- Settings -->
   <div class="card">
-    <div class="card-title">⚙️ 识别设置</div>
+    <div class="card-title">⚙️ 批改设置</div>
     <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:12px;">
       <input type="checkbox" id="caseInsensitive" checked style="width:18px;height:18px;accent-color:var(--primary)">
-      大小写不敏感（推荐）
+      忽略大小写
+    </label>
+    <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:12px;">
+      <input type="checkbox" id="ignorePunctuation" checked style="width:18px;height:18px;accent-color:var(--primary)">
+      忽略标点符号
     </label>
     <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:12px;">
       <input type="checkbox" id="fuzzyMatch" checked style="width:18px;height:18px;accent-color:var(--primary)">
-      模糊匹配（允许1个字母差错）
+      智能纠错（相似度>80%算对）
     </label>
     <label style="display:flex;align-items:center;gap:10px;font-size:14px;">
-      <input type="checkbox" id="autoNext" style="width:18px;height:18px;accent-color:var(--primary)">
-      拍照后自动跳转结果页
+      <input type="checkbox" id="strictOrder" checked style="width:18px;height:18px;accent-color:var(--primary)">
+      严格顺序匹配（推荐）
     </label>
   </div>
 
-  <button class="btn btn-primary" onclick="switchTab('scan')">
-    📷 开始扫描批改
+  <button class="btn btn-primary" onclick="saveCurrentTask()">
+    💾 保存答案并开始批改
   </button>
 </div>
 
 <!-- ====== TAB 2: 扫描批改 ====== -->
 <div class="panel" id="panel-scan">
-  <!-- OCR状态 -->
+  <!-- OCR Status -->
   <div class="ocr-status loading" id="ocrStatus">
     <div class="spinner" id="ocrSpinner"></div>
-    <span id="ocrStatusText">正在加载识别引擎…</span>
+    <span id="ocrStatusText">正在加载识别引擎...</span>
   </div>
 
-  <!-- 摄像头 -->
+  <!-- Current Task Info -->
+  <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="font-size:12px; opacity:0.8; margin-bottom:4px;">当前任务</div>
+        <div style="font-size:16px; font-weight:700;" id="currentTaskName">未选择任务</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:12px; opacity:0.8; margin-bottom:4px;">答案数量</div>
+        <div style="font-size:20px; font-weight:800;" id="currentTaskCount">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student Camera -->
   <div class="card">
-    <div class="card-title">📷 对准手写听写本</div>
+    <div class="card-title">📷 对准学生听写本</div>
     <div class="camera-wrap">
       <video id="videoEl" autoplay playsinline muted></video>
       <div class="camera-overlay">
-        <div class="scan-frame">
-          <div class="scan-line"></div>
-        </div>
+        <div class="scan-frame"><div class="scan-line"></div></div>
         <div class="scan-hint">将手写内容放入框内，保持稳定</div>
       </div>
     </div>
     <canvas id="canvasEl"></canvas>
     <div style="margin-top:12px;">
       <button class="btn btn-primary" id="captureBtn" onclick="captureAndRecognize()" disabled>
-        📸 拍照识别
+        📸 拍照批改
       </button>
     </div>
   </div>
 
-  <!-- 手动输入备用 -->
+  <!-- Manual Input -->
   <div class="card">
     <div class="card-title">⌨️ 或手动输入学生答案</div>
-    <textarea id="studentInput" placeholder="如摄像头识别不准，可直接在此输入学生写的内容（每行一个）..." style="min-height:90px;"></textarea>
+    <textarea id="studentInput" placeholder="如拍照识别不准，可在此输入学生答案（每行一个）..." style="min-height:90px;"></textarea>
     <div style="margin-top:10px;">
       <button class="btn btn-success" onclick="gradeManual()">
         ✅ 立即批改
@@ -371,14 +550,14 @@ be responsible for
     </div>
   </div>
 
-  <!-- 识别结果展示 -->
+  <!-- Result Section -->
   <div id="resultSection" style="display:none;">
     <div class="card">
       <div class="card-title">🎯 批改结果</div>
 
-      <div class="recognized-text" id="recognizedTextBox">
-        <strong>识别文字：</strong>
-        <span id="recognizedRaw"></span>
+      <div class="recognized-preview">
+        <h4>📝 识别到的学生答案</h4>
+        <div class="text-content" id="recognizedRaw"></div>
       </div>
 
       <div class="result-meta" id="resultMeta"></div>
@@ -390,94 +569,281 @@ be responsible for
       </div>
 
       <div class="btn-row">
-        <button class="btn btn-secondary" onclick="captureAgain()">🔄 再批一张</button>
+        <button class="btn btn-secondary" onclick="captureAgain()">🔄 再批一份</button>
         <button class="btn btn-primary" onclick="switchTab('stats')">📊 查看统计</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ====== TAB 3: 错误统计 ====== -->
+<!-- ====== TAB 3: 统计 ====== -->
 <div class="panel" id="panel-stats">
-  <div class="stats-summary">
-    <div class="stat-box blue">
-      <div class="num" id="totalSessions">0</div>
-      <div class="lbl">批改次数</div>
-    </div>
-    <div class="stat-box green">
-      <div class="num" id="avgScore">-</div>
-      <div class="lbl">平均得分</div>
-    </div>
-    <div class="stat-box red">
-      <div class="num" id="totalErrors">0</div>
-      <div class="lbl">总错误数</div>
-    </div>
-  </div>
-
+  <!-- Task Overview -->
   <div class="card">
-    <div class="stats-header">
-      <div class="card-title" style="margin:0">🔴 常见错误单词</div>
-      <button class="btn btn-secondary" onclick="clearStats()" style="width:auto;padding:7px 14px;font-size:12px;">清除数据</button>
-    </div>
-    <div id="errorTableWrap">
+    <div class="card-title">📚 任务概览</div>
+    <div id="taskStatsList">
       <div class="empty-state">
         <div class="emoji">📭</div>
-        <p>还没有统计数据<br>先去批改几份听写吧~</p>
+        <p>还没有任务<br>先去创建听写任务吧</p>
       </div>
     </div>
   </div>
 
+  <!-- Global Stats -->
+  <div class="stats-summary">
+    <div class="stat-box blue">
+      <div class="num" id="totalTasks">0</div>
+      <div class="lbl">任务数</div>
+    </div>
+    <div class="stat-box green">
+      <div class="num" id="totalGraded">0</div>
+      <div class="lbl">批改次数</div>
+    </div>
+    <div class="stat-box red">
+      <div class="num" id="totalErrors">0</div>
+      <div class="lbl">总错误</div>
+    </div>
+  </div>
+
+  <!-- Current Task Errors -->
   <div class="card">
-    <div class="card-title">📅 批改历史</div>
-    <div id="historyList">
+    <div class="stats-header">
+      <div class="card-title" style="margin:0">🔴 高频错误（当前任务）</div>
+    </div>
+    <div id="errorTableWrap">
       <div class="empty-state">
-        <div class="emoji">📖</div>
-        <p>暂无批改记录</p>
+        <div class="emoji">📊</div>
+        <p>暂无错误数据</p>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ========== SCRIPTS ========== -->
-<!-- Tesseract.js OCR (免费开源) -->
 <script src="https://unpkg.com/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
 
 <script>
 // ===== STATE =====
 let stream = null;
+let answerStream = null;
 let tesseractWorker = null;
 let ocrReady = false;
-let stats = JSON.parse(localStorage.getItem('dictation_stats') || '{"sessions":[],"errorMap":{}}');
+let currentTaskId = null;
+let tasks = JSON.parse(localStorage.getItem('dictation_tasks') || '[]');
+let currentRecognizedText = '';
 
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', () => {
   initOCR();
+  renderTaskList();
   updateWordCount();
   document.getElementById('answerInput').addEventListener('input', updateWordCount);
-  renderStats();
+  
+  // Create default task if none exists
+  if (tasks.length === 0) {
+    createTask('默认任务');
+  }
+  selectTask(tasks[0]?.id);
 });
+
+// ===== TASK MANAGEMENT =====
+function createTask(name) {
+  const task = {
+    id: Date.now().toString(),
+    name: name || '未命名任务',
+    answers: [],
+    sessions: [],
+    errorMap: {},
+    createdAt: new Date().toLocaleString('zh-CN')
+  };
+  tasks.push(task);
+  saveTasks();
+  return task;
+}
+
+function saveTasks() {
+  localStorage.setItem('dictation_tasks', JSON.stringify(tasks));
+}
+
+function selectTask(taskId) {
+  currentTaskId = taskId;
+  const task = tasks.find(t => t.id === taskId);
+  if (task) {
+    document.getElementById('currentTaskName').textContent = task.name;
+    document.getElementById('currentTaskCount').textContent = task.answers.length;
+    document.getElementById('answerInput').value = task.answers.join('\n');
+    updateWordCount();
+  }
+  renderTaskList();
+  renderTaskStats();
+}
+
+function renderTaskList() {
+  const container = document.getElementById('taskList');
+  let html = tasks.map(task => {
+    const isActive = task.id === currentTaskId;
+    const count = task.sessions?.length || 0;
+    return `<div class="task-chip ${isActive ? 'active' : ''}" onclick="selectTask('${task.id}')">
+      ${task.name}
+      ${count > 0 ? `<span class="count">${count}</span>` : ''}
+    </div>`;
+  }).join('');
+  
+  html += `<div class="task-chip add-task-btn" onclick="showNewTaskModal()">+ 新建任务</div>`;
+  container.innerHTML = html;
+}
+
+function showNewTaskModal() {
+  document.getElementById('newTaskModal').classList.add('show');
+  document.getElementById('newTaskName').focus();
+}
+
+function closeNewTaskModal() {
+  document.getElementById('newTaskModal').classList.remove('show');
+  document.getElementById('newTaskName').value = '';
+}
+
+function createNewTask() {
+  const name = document.getElementById('newTaskName').value.trim();
+  if (!name) {
+    showToast('请输入任务名称');
+    return;
+  }
+  const task = createTask(name);
+  selectTask(task.id);
+  closeNewTaskModal();
+  showToast('任务创建成功');
+}
+
+function saveCurrentTask() {
+  const task = tasks.find(t => t.id === currentTaskId);
+  if (!task) return;
+  
+  const answers = getAnswerLines();
+  if (answers.length === 0) {
+    showToast('请先输入答案');
+    return;
+  }
+  
+  task.answers = answers;
+  saveTasks();
+  selectTask(task.id);
+  showToast('答案已保存');
+  switchTab('scan');
+}
+
+// ===== ANSWER INPUT METHODS =====
+function setAnswerMethod(method) {
+  document.querySelectorAll('.method-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(`btn-${method}`).classList.add('active');
+  
+  document.getElementById('answer-manual').style.display = method === 'manual' ? 'block' : 'none';
+  document.getElementById('answer-camera').style.display = method === 'camera' ? 'block' : 'none';
+  document.getElementById('answer-file').style.display = method === 'file' ? 'block' : 'none';
+  
+  if (method === 'camera') {
+    startAnswerCamera();
+  } else {
+    stopAnswerCamera();
+  }
+}
+
+async function startAnswerCamera() {
+  if (answerStream) return;
+  try {
+    answerStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    });
+    document.getElementById('answerVideo').srcObject = answerStream;
+  } catch(e) {
+    showToast('无法访问摄像头');
+  }
+}
+
+function stopAnswerCamera() {
+  if (answerStream) {
+    answerStream.getTracks().forEach(t => t.stop());
+    answerStream = null;
+    document.getElementById('answerVideo').srcObject = null;
+  }
+}
+
+async function captureAnswerImage() {
+  if (!ocrReady) { showToast('识别引擎未就绪'); return; }
+  
+  const video = document.getElementById('answerVideo');
+  const canvas = document.getElementById('answerCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  
+  showLoading('正在识别答案...');
+  try {
+    const { data } = await tesseractWorker.recognize(canvas);
+    hideLoading();
+    
+    // Process recognized text
+    const lines = data.text.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 0)
+      .map(l => l.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s\-']/g, ''));
+    
+    document.getElementById('recognizedAnswerText').value = lines.join('\n');
+    document.getElementById('answerPreview').style.display = 'block';
+    showToast(`识别到 ${lines.length} 个条目`);
+  } catch(e) {
+    hideLoading();
+    showToast('识别失败，请重试');
+  }
+}
+
+function useRecognizedAnswer() {
+  const text = document.getElementById('recognizedAnswerText').value;
+  document.getElementById('answerInput').value = text;
+  document.getElementById('answerPreview').style.display = 'none';
+  updateWordCount();
+  showToast('答案已应用');
+}
+
+function handleAnswerFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    document.getElementById('answerInput').value = text;
+    updateWordCount();
+    showToast('文件导入成功');
+  };
+  reader.readAsText(file);
+}
 
 // ===== OCR INIT =====
 async function initOCR() {
   try {
-    setOcrStatus('loading', '正在加载手写识别引擎（首次约30秒）…');
-    tesseractWorker = await Tesseract.createWorker('eng', 1, {
+    setOcrStatus('loading', '正在加载AI识别引擎...');
+    tesseractWorker = await Tesseract.createWorker('eng+chi_sim', 1, {
       logger: m => {
         if (m.status === 'recognizing text') {
-          // progress update handled in captureAndRecognize
+          setOcrStatus('loading', `识别中... ${Math.round(m.progress * 100)}%`);
         }
       }
     });
-    // 配置适合手写英文识别的参数
+    
+    // Optimize for handwriting
     await tesseractWorker.setParameters({
-      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz \'-',
+      tessedit_char_whitelist: '',
       preserve_interword_spaces: '1',
+      tessedit_pageseg_mode: '6',
     });
+    
     ocrReady = true;
-    setOcrStatus('ready', '识别引擎就绪 ✓ 可以开始批改');
+    setOcrStatus('ready', 'AI识别引擎就绪 ✓');
     document.getElementById('captureBtn').disabled = false;
   } catch(e) {
-    setOcrStatus('loading', '引擎加载失败，请使用手动输入模式');
+    setOcrStatus('loading', '引擎加载失败，请使用手动输入');
     console.error('OCR init failed:', e);
   }
 }
@@ -520,9 +886,19 @@ function switchTab(name) {
   });
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
-  if (name === 'scan') startCamera();
-  else stopCamera();
-  if (name === 'stats') renderStats();
+  
+  if (name === 'scan') {
+    startCamera();
+    stopAnswerCamera();
+  } else if (name === 'setup') {
+    stopCamera();
+    const method = document.querySelector('.method-btn.active')?.id.replace('btn-', '');
+    if (method === 'camera') startAnswerCamera();
+  } else {
+    stopCamera();
+    stopAnswerCamera();
+    renderTaskStats();
+  }
 }
 
 // ===== WORD COUNT =====
@@ -538,206 +914,293 @@ function getAnswerLines() {
 
 // ===== CAPTURE & OCR =====
 async function captureAndRecognize() {
-  if (!ocrReady) { showToast('识别引擎未就绪，请稍等…'); return; }
-  const answers = getAnswerLines();
-  if (answers.length === 0) { showToast('请先在"设置答案"中输入标准答案'); switchTab('setup'); return; }
-
+  const task = tasks.find(t => t.id === currentTaskId);
+  if (!task || task.answers.length === 0) {
+    showToast('请先在"设置答案"中保存答案');
+    switchTab('setup');
+    return;
+  }
+  
+  if (!ocrReady) { showToast('识别引擎未就绪'); return; }
+  
   const video = document.getElementById('videoEl');
   const canvas = document.getElementById('canvasEl');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
-
-  showLoading('正在识别手写文字，请稍候…');
+  
+  showLoading('AI正在识别手写内容...');
   try {
     const { data } = await tesseractWorker.recognize(canvas);
     hideLoading();
-    const rawText = data.text;
-    gradeText(rawText, answers, rawText);
+    currentRecognizedText = data.text;
+    gradeText(data.text, task.answers, data.text);
   } catch(e) {
     hideLoading();
     showToast('识别失败，请重试或使用手动输入');
-    console.error(e);
   }
 }
 
 // ===== MANUAL GRADE =====
 function gradeManual() {
-  const answers = getAnswerLines();
-  if (answers.length === 0) { showToast('请先设置标准答案'); switchTab('setup'); return; }
+  const task = tasks.find(t => t.id === currentTaskId);
+  if (!task || task.answers.length === 0) {
+    showToast('请先设置答案');
+    switchTab('setup');
+    return;
+  }
+  
   const raw = document.getElementById('studentInput').value;
-  if (!raw.trim()) { showToast('请输入学生的答案'); return; }
-  gradeText(raw, answers, raw);
+  if (!raw.trim()) { showToast('请输入学生答案'); return; }
+  
+  currentRecognizedText = raw;
+  gradeText(raw, task.answers, raw);
 }
 
 // ===== GRADING CORE =====
 function gradeText(rawText, answers, displayRaw) {
   const caseInsensitive = document.getElementById('caseInsensitive').checked;
+  const ignorePunctuation = document.getElementById('ignorePunctuation').checked;
   const fuzzy = document.getElementById('fuzzyMatch').checked;
-
-  // 解析学生答案：每行一个
-  const studentLines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
+  const strictOrder = document.getElementById('strictOrder').checked;
+  
+  // Parse student answers
+  let studentLines = rawText.split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
+  
+  // Clean up lines
+  studentLines = studentLines.map(line => {
+    if (ignorePunctuation) {
+      line = line.replace(/[.,!?;:"'，。！？；："']/g, '');
+    }
+    return line.trim();
+  }).filter(l => l.length > 0);
+  
   const results = [];
-  const maxLen = Math.max(answers.length, studentLines.length);
-
-  for (let i = 0; i < answers.length; i++) {
-    const answer = answers[i];
-    const written = studentLines[i] || '';
-    const correct = compareWords(answer, written, caseInsensitive, fuzzy);
-    results.push({ answer, written, correct, index: i + 1 });
+  const usedIndices = new Set();
+  
+  if (strictOrder) {
+    // Strict order matching
+    for (let i = 0; i < answers.length; i++) {
+      const answer = answers[i];
+      const written = studentLines[i] || '';
+      const correct = compareWords(answer, written, caseInsensitive, fuzzy);
+      results.push({ answer, written, correct, index: i + 1 });
+    }
+  } else {
+    // Flexible matching - find best match for each answer
+    for (let i = 0; i < answers.length; i++) {
+      const answer = answers[i];
+      let bestMatch = { written: '', correct: false, similarity: 0 };
+      
+      for (let j = 0; j < studentLines.length; j++) {
+        if (usedIndices.has(j)) continue;
+        
+        const written = studentLines[j];
+        const similarity = calculateSimilarity(answer, written, caseInsensitive);
+        const isCorrect = similarity >= (fuzzy ? 0.8 : 1.0);
+        
+        if (similarity > bestMatch.similarity) {
+          bestMatch = { written, correct: isCorrect, similarity };
+          if (isCorrect) {
+            usedIndices.add(j);
+            break;
+          }
+        }
+      }
+      
+      results.push({ 
+        answer, 
+        written: bestMatch.written || '(未找到)', 
+        correct: bestMatch.correct, 
+        index: i + 1 
+      });
+    }
   }
-
-  // 渲染结果
+  
   renderResult(results, displayRaw);
-
-  // 保存统计
-  saveStats(results);
-
-  // 显示结果区
+  saveTaskStats(results);
+  
   document.getElementById('resultSection').style.display = 'block';
   document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
-
-  if (document.getElementById('autoNext').checked) {
-    setTimeout(() => switchTab('stats'), 1500);
-  }
 }
 
-// ===== COMPARE =====
+// ===== SIMILARITY CALCULATION =====
+function calculateSimilarity(a, b, caseInsensitive) {
+  if (!a || !b) return 0;
+  
+  if (caseInsensitive) {
+    a = a.toLowerCase();
+    b = b.toLowerCase();
+  }
+  
+  // Exact match
+  if (a === b) return 1.0;
+  
+  // Levenshtein distance
+  const distance = levenshtein(a, b);
+  const maxLen = Math.max(a.length, b.length);
+  return 1 - (distance / maxLen);
+}
+
 function compareWords(answer, written, caseInsensitive, fuzzy) {
-  if (!written) return false;
-  let a = answer.trim(), w = written.trim();
-  if (caseInsensitive) { a = a.toLowerCase(); w = w.toLowerCase(); }
-  if (a === w) return true;
-  if (fuzzy && levenshtein(a, w) <= 1) return true;
-  return false;
+  if (!written || written === '(未找到)') return false;
+  
+  const similarity = calculateSimilarity(answer, written, caseInsensitive);
+  return fuzzy ? similarity >= 0.8 : similarity >= 1.0;
 }
 
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
-  const dp = Array.from({length: m+1}, (_, i) => Array.from({length: n+1}, (_, j) => i === 0 ? j : j === 0 ? i : 0));
-  for (let i = 1; i <= m; i++)
-    for (let j = 1; j <= n; j++)
-      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  if (m === 0) return n;
+  if (n === 0) return m;
+  
+  const dp = Array.from({length: m+1}, () => Array(n+1).fill(0));
+  
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i-1] === b[j-1] 
+        ? dp[i-1][j-1] 
+        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+    }
+  }
   return dp[m][n];
 }
 
 // ===== RENDER RESULT =====
 function renderResult(results, rawText) {
   const correct = results.filter(r => r.correct).length;
-  const total   = results.length;
-  const score   = Math.round(correct / total * 100);
-
-  // meta
-  const meta = document.getElementById('resultMeta');
-  meta.innerHTML = `
+  const total = results.length;
+  const score = Math.round(correct / total * 100);
+  
+  document.getElementById('resultMeta').innerHTML = `
     <span class="badge badge-score">得分 ${score}%</span>
     <span class="badge badge-ok">✅ 正确 ${correct}</span>
     <span class="badge badge-err">❌ 错误 ${total - correct}</span>
     <span class="badge" style="background:#f8faff;color:#475569;">共 ${total} 词</span>`;
-
-  // words grid
-  const grid = document.getElementById('wordsGrid');
-  grid.innerHTML = results.map(r => `
+  
+  document.getElementById('wordsGrid').innerHTML = results.map(r => `
     <div class="word-chip ${r.correct ? 'correct' : 'wrong'}">
       <span class="icon">${r.correct ? '✅' : '❌'}</span>
       <span>${r.answer}</span>
     </div>`).join('');
-
-  // wrong detail
+  
   const wrongs = results.filter(r => !r.correct);
   const wdEl = document.getElementById('wrongDetail');
-  const wlEl = document.getElementById('wrongList');
   if (wrongs.length > 0) {
     wdEl.style.display = 'block';
-    wlEl.innerHTML = wrongs.map(r => `
+    document.getElementById('wrongList').innerHTML = wrongs.map(r => `
       <div class="wrong-item">
         <span style="color:var(--muted);font-size:12px;">#${r.index}</span>
-        <span class="written">${r.written || '(未写)'}</span>
+        <span class="written">${r.written}</span>
         <span class="arrow">→</span>
         <span class="correct-word">${r.answer}</span>
       </div>`).join('');
   } else {
     wdEl.style.display = 'none';
   }
-
-  // raw text
-  document.getElementById('recognizedRaw').textContent = rawText.substring(0, 300) + (rawText.length > 300 ? '…' : '');
+  
+  document.getElementById('recognizedRaw').textContent = 
+    rawText.substring(0, 500) + (rawText.length > 500 ? '...' : '');
 }
 
-// ===== SAVE STATS =====
-function saveStats(results) {
+// ===== SAVE TASK STATS =====
+function saveTaskStats(results) {
+  const task = tasks.find(t => t.id === currentTaskId);
+  if (!task) return;
+  
   const wrongs = results.filter(r => !r.correct);
   const correct = results.filter(r => r.correct).length;
   const score = Math.round(correct / results.length * 100);
-
-  // update error map
+  
+  // Update error map
   wrongs.forEach(r => {
-    stats.errorMap[r.answer] = (stats.errorMap[r.answer] || 0) + 1;
+    task.errorMap[r.answer] = (task.errorMap[r.answer] || 0) + 1;
   });
-
-  // push session
-  stats.sessions.push({
+  
+  // Add session
+  task.sessions.push({
     time: new Date().toLocaleString('zh-CN'),
     total: results.length,
     correct,
     score,
-    wrongs: wrongs.map(r => r.answer)
+    wrongs: wrongs.map(r => ({ answer: r.answer, written: r.written }))
   });
-
-  localStorage.setItem('dictation_stats', JSON.stringify(stats));
+  
+  saveTasks();
+  renderTaskList();
 }
 
-// ===== RENDER STATS =====
-function renderStats() {
-  const sessions = stats.sessions;
-  document.getElementById('totalSessions').textContent = sessions.length;
-
-  if (sessions.length > 0) {
-    const avg = Math.round(sessions.reduce((s,r) => s + r.score, 0) / sessions.length);
-    document.getElementById('avgScore').textContent = avg + '%';
-    document.getElementById('totalErrors').textContent =
-      sessions.reduce((s,r) => s + (r.total - r.correct), 0);
+// ===== RENDER TASK STATS =====
+function renderTaskStats() {
+  const container = document.getElementById('taskStatsList');
+  
+  if (tasks.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>还没有任务</p></div>`;
+    return;
   }
+  
+  let totalGraded = 0;
+  let totalErrors = 0;
+  
+  const html = tasks.map(task => {
+    const sessionCount = task.sessions?.length || 0;
+    const errorCount = Object.values(task.errorMap || {}).reduce((a, b) => a + b, 0);
+    totalGraded += sessionCount;
+    totalErrors += errorCount;
+    
+    const avgScore = sessionCount > 0 
+      ? Math.round(task.sessions.reduce((s, r) => s + r.score, 0) / sessionCount)
+      : '-';
+    
+    return `<div class="history-item">
+      <div class="history-icon">📝</div>
+      <div class="history-body">
+        <div style="font-weight:600;">${task.name}</div>
+        <div class="info">${task.answers.length} 个答案 · 批改 ${sessionCount} 次</div>
+        <div class="score">平均 ${avgScore}% ${errorCount > 0 ? `· ${errorCount} 个错误` : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+  
+  container.innerHTML = html;
+  
+  document.getElementById('totalTasks').textContent = tasks.length;
+  document.getElementById('totalGraded').textContent = totalGraded;
+  document.getElementById('totalErrors').textContent = totalErrors;
+  
+  // Render current task errors
+  renderCurrentTaskErrors();
+}
 
-  // error table
-  const errMap = stats.errorMap;
-  const errList = Object.entries(errMap).sort((a,b) => b[1]-a[1]);
+function renderCurrentTaskErrors() {
+  const task = tasks.find(t => t.id === currentTaskId);
   const wrap = document.getElementById('errorTableWrap');
-  if (errList.length === 0) {
-    wrap.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>还没有统计数据<br>先去批改几份听写吧~</p></div>`;
-  } else {
-    const maxCount = errList[0][1];
-    wrap.innerHTML = `<table class="error-table">
-      <thead><tr><th>单词</th><th>错误次数</th></tr></thead>
-      <tbody>${errList.map(([word, cnt]) => `
-        <tr>
-          <td><strong>${word}</strong></td>
-          <td>
-            ${cnt} 次
-            <div class="error-bar-wrap"><div class="error-bar" style="width:${Math.round(cnt/maxCount*100)}%"></div></div>
-          </td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
+  
+  if (!task || !task.errorMap || Object.keys(task.errorMap).length === 0) {
+    wrap.innerHTML = `<div class="empty-state"><div class="emoji">📊</div><p>暂无错误数据</p></div>`;
+    return;
   }
-
-  // history
-  const histEl = document.getElementById('historyList');
-  if (sessions.length === 0) {
-    histEl.innerHTML = `<div class="empty-state"><div class="emoji">📖</div><p>暂无批改记录</p></div>`;
-  } else {
-    histEl.innerHTML = [...sessions].reverse().slice(0, 20).map(s => `
-      <div class="history-item">
-        <div class="history-icon">${s.score >= 80 ? '🎉' : s.score >= 60 ? '📝' : '😅'}</div>
-        <div class="history-body">
-          <div class="time">${s.time}</div>
-          <div class="score">${s.score}%</div>
-          <div class="info">共 ${s.total} 词 · 正确 ${s.correct} · 错误 ${s.total - s.correct}</div>
-          ${s.wrongs.length > 0 ? `<div class="info" style="margin-top:4px;color:var(--error);">错：${s.wrongs.join('、')}</div>` : ''}
-        </div>
-      </div>`).join('');
-  }
+  
+  const errList = Object.entries(task.errorMap).sort((a, b) => b[1] - a[1]);
+  const maxCount = errList[0][1];
+  
+  wrap.innerHTML = `<table class="error-table">
+    <thead><tr><th>单词/句子</th><th>错误次数</th></tr></thead>
+    <tbody>${errList.map(([word, cnt]) => `
+      <tr>
+        <td><strong>${word}</strong></td>
+        <td>
+          ${cnt} 次
+          <div class="error-bar-wrap"><div class="error-bar" style="width:${Math.round(cnt/maxCount*100)}%"></div></div>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
 }
 
 // ===== CAPTURE AGAIN =====
@@ -747,23 +1210,12 @@ function captureAgain() {
   window.scrollTo(0, 0);
 }
 
-// ===== CLEAR STATS =====
-function clearStats() {
-  if (!confirm('确定清除所有统计数据？')) return;
-  stats = { sessions: [], errorMap: {} };
-  localStorage.setItem('dictation_stats', JSON.stringify(stats));
-  renderStats();
-  document.getElementById('totalSessions').textContent = '0';
-  document.getElementById('avgScore').textContent = '-';
-  document.getElementById('totalErrors').textContent = '0';
-  showToast('数据已清除');
-}
-
 // ===== LOADING =====
 function showLoading(msg) {
-  document.getElementById('loadingMsg').textContent = msg || '处理中…';
+  document.getElementById('loadingMsg').textContent = msg || '处理中...';
   document.getElementById('loadingOverlay').classList.add('show');
 }
+
 function hideLoading() {
   document.getElementById('loadingOverlay').classList.remove('show');
 }
