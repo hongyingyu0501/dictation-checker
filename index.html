@@ -3,668 +3,1032 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>英语听写批改助手 - AI智能版</title>
+  <title>听写批改助手</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
       --primary: #4f8ef7;
-      --primary-dark: #3a6fd8;
-      --success: #22c55e;
-      --error: #ef4444;
-      --warning: #f59e0b;
-      --bg: #f0f4ff;
+      --success: #16a34a;
+      --error: #dc2626;
+      --warning: #d97706;
+      --gemini: #7c3aed;
+      --bg: #f1f5f9;
       --card: #ffffff;
-      --text: #1e293b;
+      --text: #0f172a;
       --muted: #64748b;
       --border: #e2e8f0;
       --radius: 14px;
     }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
+      padding-bottom: 80px;
     }
-
-    /* ===== HEADER ===== */
     header {
-      background: linear-gradient(135deg, #4f8ef7 0%, #7c63f5 100%);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      padding: 16px 20px 14px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      box-shadow: 0 2px 12px rgba(79,142,247,.35);
+      padding: 14px 16px;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 2px 12px rgba(102,126,234,.35);
     }
-    header .logo { font-size: 28px; }
-    header h1 { font-size: 18px; font-weight: 700; letter-spacing: .3px; }
-    header p  { font-size: 12px; opacity: .85; margin-top: 2px; }
+    header .logo { font-size: 26px; }
+    header h1 { font-size: 17px; font-weight: 700; }
+    header p  { font-size: 11px; opacity: .85; margin-top: 1px; }
+    .progress-bar-wrap {
+      margin-left: auto; text-align: right;
+    }
+    .progress-num {
+      font-size: 20px; font-weight: 800; line-height: 1;
+    }
+    .progress-lbl {
+      font-size: 10px; opacity: .8;
+    }
 
-    /* ===== TABS ===== */
     .tabs {
-      display: flex;
-      background: white;
+      display: flex; background: white;
       border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; z-index: 10;
+      position: sticky; top: 0; z-index: 50;
     }
     .tab-btn {
-      flex: 1; padding: 13px 4px; font-size: 13px; font-weight: 600;
+      flex: 1; padding: 12px 4px; font-size: 13px; font-weight: 600;
       color: var(--muted); border: none; background: none; cursor: pointer;
       border-bottom: 3px solid transparent; transition: all .2s;
     }
-    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-btn.active { color: var(--gemini); border-bottom-color: var(--gemini); }
 
-    /* ===== PANELS ===== */
-    .panel { display: none; padding: 16px; }
+    .panel { display: none; padding: 14px; }
     .panel.active { display: block; }
 
-    /* ===== CARDS ===== */
     .card {
       background: var(--card); border-radius: var(--radius);
-      padding: 18px; margin-bottom: 16px;
+      padding: 16px; margin-bottom: 14px;
       box-shadow: 0 1px 6px rgba(0,0,0,.07);
     }
     .card-title {
-      font-size: 14px; font-weight: 700; color: var(--text);
-      margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+      font-size: 14px; font-weight: 700; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
     }
 
-    /* ===== TASK SELECTOR ===== */
-    .task-selector {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: var(--radius);
-      padding: 16px; margin-bottom: 16px;
-      color: white;
+    /* Task selector */
+    .task-bar {
+      background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+      border-radius: var(--radius); padding: 14px; margin-bottom: 14px; color: white;
     }
-    .task-selector h3 {
-      font-size: 14px; margin-bottom: 10px; opacity: 0.9;
-    }
-    .task-list {
-      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
-    }
+    .task-bar h3 { font-size: 13px; margin-bottom: 8px; opacity: .9; }
+    .task-list { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
     .task-chip {
-      background: rgba(255,255,255,0.2);
-      border: 2px solid transparent;
-      border-radius: 20px;
-      padding: 6px 14px;
-      font-size: 13px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all .2s;
+      background: rgba(255,255,255,.2); border: 2px solid transparent;
+      border-radius: 20px; padding: 5px 13px; font-size: 13px;
+      cursor: pointer; white-space: nowrap; transition: all .2s; flex-shrink: 0;
     }
-    .task-chip:hover { background: rgba(255,255,255,0.3); }
-    .task-chip.active {
-      background: white; color: #667eea; font-weight: 600;
-    }
-    .task-chip .count {
-      background: rgba(255,255,255,0.3);
-      border-radius: 10px; padding: 2px 6px;
-      font-size: 11px; margin-left: 4px;
-    }
-    .task-chip.active .count { background: #667eea; color: white; }
-    .add-task-btn {
-      background: rgba(255,255,255,0.3);
-      border: 2px dashed rgba(255,255,255,0.5);
-    }
+    .task-chip:hover { background: rgba(255,255,255,.3); }
+    .task-chip.active { background: white; color: #7c3aed; font-weight: 700; }
+    .add-task-btn { background: rgba(255,255,255,.2); border: 2px dashed rgba(255,255,255,.5); }
 
-    /* ===== INPUT METHODS ===== */
-    .input-methods {
-      display: flex; gap: 8px; margin-bottom: 12px;
-    }
-    .method-btn {
-      flex: 1; padding: 10px; border-radius: 10px;
-      border: 2px solid var(--border); background: white;
-      font-size: 13px; cursor: pointer; transition: all .2s;
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-    }
-    .method-btn:hover { border-color: var(--primary); }
-    .method-btn.active {
-      border-color: var(--primary); background: #eff6ff; color: var(--primary);
-      font-weight: 600;
-    }
-
-    /* ===== TEXTAREA ===== */
     textarea {
       width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
       padding: 12px; font-size: 15px; resize: vertical; min-height: 120px;
       font-family: inherit; color: var(--text); outline: none; transition: border .2s;
-      line-height: 1.65;
+      line-height: 1.7;
     }
-    textarea:focus { border-color: var(--primary); }
-    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    textarea:focus { border-color: var(--gemini); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
 
-    /* ===== BUTTONS ===== */
     .btn {
       display: inline-flex; align-items: center; justify-content: center;
       gap: 7px; padding: 13px 20px; border-radius: 11px; font-size: 15px;
-      font-weight: 600; border: none; cursor: pointer; transition: all .2s;
-      width: 100%;
+      font-weight: 600; border: none; cursor: pointer; transition: all .2s; width: 100%;
     }
     .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-gemini { background: var(--gemini); color: white; }
     .btn-success { background: var(--success); color: white; }
+    .btn-danger  { background: var(--error); color: white; }
+    .btn-secondary { background: var(--bg); color: var(--text); border: 1.5px solid var(--border); }
     .btn-warning { background: var(--warning); color: white; }
-    .btn-secondary {
-      background: var(--bg); color: var(--text);
-      border: 1.5px solid var(--border);
-    }
-    .btn:active { transform: scale(.97); }
-    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
     .btn-row { display: flex; gap: 10px; }
     .btn-row .btn { flex: 1; }
-    .btn-small {
-      padding: 8px 14px; font-size: 13px; width: auto;
-    }
+    .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; }
 
-    /* ===== CAMERA ===== */
+    /* Camera */
     .camera-wrap {
       position: relative; background: #000; border-radius: 12px;
-      overflow: hidden; aspect-ratio: 4/3; width: 100%;
+      overflow: hidden; width: 100%; aspect-ratio: 3/4;
     }
-    #videoEl {
-      width: 100%; height: 100%; object-fit: cover; display: block;
-    }
-    .camera-overlay {
-      position: absolute; inset: 0; pointer-events: none;
-    }
+    #videoEl { width: 100%; height: 100%; object-fit: cover; display: block; }
     .scan-frame {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-55%);
-      width: 88%; height: 55%; border: 2px solid rgba(79,142,247,.8);
-      border-radius: 8px; box-shadow: 0 0 0 2000px rgba(0,0,0,.35);
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 92%; height: 82%; border: 2px solid rgba(124,58,237,.9);
+      border-radius: 8px; box-shadow: 0 0 0 2000px rgba(0,0,0,.38);
     }
     .scan-line {
       position: absolute; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent, #4f8ef7, transparent);
+      background: linear-gradient(90deg, transparent, #a78bfa, transparent);
       animation: scanMove 2s linear infinite;
     }
-    @keyframes scanMove {
-      0%   { top: 5%; }
-      50%  { top: 90%; }
-      100% { top: 5%; }
-    }
+    @keyframes scanMove { 0%{top:5%} 50%{top:95%} 100%{top:5%} }
     .scan-hint {
       position: absolute; bottom: 10px; left: 0; right: 0;
-      text-align: center; color: white; font-size: 12px;
-      text-shadow: 0 1px 3px rgba(0,0,0,.6);
+      text-align: center; color: white; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,.8);
     }
-    #canvasEl { display: none; }
+    canvas { display: none; }
 
-    /* ===== OCR STATUS ===== */
-    .ocr-status {
-      display: flex; align-items: center; gap: 10px;
-      padding: 12px 14px; border-radius: 10px;
-      background: #f8faff; border: 1px solid #dce8ff;
-      font-size: 13px; color: var(--muted); margin-bottom: 14px;
+    /* ===== 核心：全屏批改结果 ===== */
+    #resultOverlay {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: #0f172a; flex-direction: column; overflow-y: auto;
     }
-    .spinner {
-      width: 18px; height: 18px; border: 2px solid #c7d9ff;
-      border-top-color: var(--primary); border-radius: 50%;
-      animation: spin .7s linear infinite; flex-shrink: 0;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .ocr-status.ready   { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
-    .ocr-status.loading { background: #f8faff; border-color: #dce8ff; color: var(--muted); }
+    #resultOverlay.show { display: flex; }
 
-    /* ===== RECOGNIZED TEXT PREVIEW ===== */
-    .recognized-preview {
-      background: #f8faff; border: 1px solid #e0e9ff; border-radius: 10px;
-      padding: 12px; margin-bottom: 12px; font-size: 14px;
+    .result-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+      flex-shrink: 0;
     }
-    .recognized-preview h4 {
-      font-size: 12px; color: var(--muted); margin-bottom: 8px;
-      display: flex; align-items: center; gap: 6px;
+    .result-header .stu-name {
+      font-size: 18px; font-weight: 800; color: white; flex: 1;
     }
-    .recognized-preview .text-content {
-      color: var(--text); line-height: 1.6;
-      white-space: pre-wrap; word-break: break-all;
-    }
-    .edit-btn {
-      margin-top: 8px; padding: 6px 12px;
-      background: white; border: 1px solid var(--border);
-      border-radius: 6px; font-size: 12px; cursor: pointer;
+    .result-score-badge {
+      background: white; color: #7c3aed;
+      border-radius: 20px; padding: 6px 14px;
+      font-size: 18px; font-weight: 800;
     }
 
-    /* ===== RESULT ===== */
-    .result-meta {
-      display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+    /* 照片叠加模式 */
+    #photoAnnotateWrap {
+      position: relative; flex-shrink: 0;
     }
-    .badge {
-      padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: 600;
-    }
-    .badge-score { background: #eff6ff; color: #1d4ed8; }
-    .badge-ok    { background: #f0fdf4; color: #15803d; }
-    .badge-err   { background: #fef2f2; color: #dc2626; }
+    #annotateCanvas { width: 100%; display: block; }
 
-    .words-grid {
-      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+    /* 紧凑列表模式 */
+    #resultList {
+      padding: 10px 12px; flex: 1;
     }
-    .word-chip {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: 600;
-    }
-    .word-chip.correct { background: #f0fdf4; color: #15803d; border: 1.5px solid #bbf7d0; }
-    .word-chip.wrong   { background: #fef2f2; color: #dc2626; border: 1.5px solid #fecaca; }
-    .word-chip .icon { font-size: 14px; }
 
-    .wrong-detail {
-      background: #fef9f0; border: 1.5px solid #fed7aa; border-radius: 10px;
-      padding: 14px; margin-bottom: 16px;
+    /* 每条结果：超大字体，快速识别 */
+    .result-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; border-radius: 10px; margin-bottom: 6px;
     }
-    .wrong-detail h4 { font-size: 13px; color: #c2410c; margin-bottom: 10px; }
-    .wrong-item {
-      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-      font-size: 14px; padding: 7px 10px; background: white;
-      border-radius: 8px;
-    }
-    .wrong-item .written { color: var(--error); text-decoration: line-through; font-weight: 600; }
-    .wrong-item .arrow   { color: var(--muted); }
-    .wrong-item .correct-word { color: var(--success); font-weight: 700; }
+    .result-row.correct { background: rgba(22,163,74,.18); border-left: 4px solid #16a34a; }
+    .result-row.wrong   { background: rgba(220,38,38,.18); border-left: 4px solid #dc2626; }
+    .result-row.uncertain { background: rgba(217,119,6,.18); border-left: 4px solid #d97706; }
 
-    /* ===== STATS ===== */
-    .stats-summary {
-      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
-      margin-bottom: 18px;
+    .result-idx {
+      font-size: 13px; color: rgba(255,255,255,.5);
+      min-width: 22px; text-align: right;
     }
-    .stat-box {
-      background: var(--card); border-radius: 12px; padding: 14px 10px;
-      text-align: center; box-shadow: 0 1px 5px rgba(0,0,0,.07);
+    .result-icon {
+      font-size: 26px; min-width: 32px; text-align: center; line-height: 1;
     }
-    .stat-box .num  { font-size: 26px; font-weight: 800; }
-    .stat-box .lbl  { font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .stat-box.blue  .num { color: var(--primary); }
-    .stat-box.green .num { color: var(--success); }
-    .stat-box.red   .num { color: var(--error); }
+    .result-words {
+      flex: 1; min-width: 0;
+    }
+    .result-answer {
+      font-size: 18px; font-weight: 800; color: white; line-height: 1.2;
+    }
+    .result-recognized {
+      font-size: 13px; color: rgba(255,255,255,.55); margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .result-row.correct .result-answer { color: #4ade80; }
+    .result-row.wrong   .result-answer { color: #f87171; }
+    .result-row.uncertain .result-answer { color: #fbbf24; }
 
-    .error-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .error-table th {
-      background: #f1f5fe; padding: 9px 12px; text-align: left;
-      font-weight: 700; font-size: 12px; color: var(--muted);
+    .result-toggle {
+      display: flex; gap: 4px;
     }
-    .error-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); }
-    .error-table tr:last-child td { border-bottom: none; }
-    .error-bar-wrap { background: #f1f5f9; border-radius: 20px; height: 7px; width: 100%; margin-top: 4px; }
-    .error-bar      { height: 7px; border-radius: 20px; background: var(--error); transition: width .4s; }
-
-    .empty-state {
-      text-align: center; padding: 40px 20px; color: var(--muted);
+    .result-toggle button {
+      padding: 5px 10px; border-radius: 6px; border: none;
+      font-size: 13px; font-weight: 700; cursor: pointer;
     }
-    .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
-    .empty-state p { font-size: 14px; }
+    .t-correct { background: #16a34a; color: white; }
+    .t-wrong   { background: #dc2626; color: white; }
 
-    /* ===== HISTORY ===== */
-    .history-item {
-      background: var(--card); border-radius: 12px; padding: 14px;
-      margin-bottom: 10px; box-shadow: 0 1px 5px rgba(0,0,0,.07);
-      display: flex; gap: 12px; align-items: flex-start;
+    .result-bottom {
+      padding: 12px 14px 24px; flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 10px;
     }
-    .history-icon { font-size: 28px; }
-    .history-body { flex: 1; }
-    .history-body .time  { font-size: 11px; color: var(--muted); }
-    .history-body .score { font-size: 16px; font-weight: 800; color: var(--primary); }
-    .history-body .info  { font-size: 13px; color: var(--muted); margin-top: 2px; }
-
-    /* ===== TOAST ===== */
-    .toast {
-      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px);
-      background: #1e293b; color: white; padding: 12px 22px; border-radius: 30px;
-      font-size: 14px; z-index: 999; transition: transform .3s, opacity .3s;
-      opacity: 0; white-space: nowrap; pointer-events: none;
+    .result-summary {
+      display: flex; gap: 10px; justify-content: center;
     }
-    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .sum-box {
+      flex: 1; background: rgba(255,255,255,.08); border-radius: 10px;
+      padding: 12px; text-align: center;
+    }
+    .sum-box .n { font-size: 28px; font-weight: 900; color: white; line-height: 1; }
+    .sum-box .l { font-size: 11px; color: rgba(255,255,255,.6); margin-top: 2px; }
+    .sum-box.ok .n { color: #4ade80; }
+    .sum-box.err .n { color: #f87171; }
 
-    /* ===== LOADING OVERLAY ===== */
+    /* 学生姓名输入 */
+    .stu-input-wrap {
+      background: rgba(255,255,255,.08); border-radius: 10px;
+      padding: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .stu-input-wrap label { font-size: 13px; color: rgba(255,255,255,.7); white-space: nowrap; }
+    .stu-input-wrap input {
+      flex: 1; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.2);
+      border-radius: 7px; padding: 8px 10px; color: white; font-size: 15px; font-weight: 600;
+    }
+    .stu-input-wrap input::placeholder { color: rgba(255,255,255,.4); }
+
+    /* 快速操作按钮行 */
+    .quick-actions { display: flex; gap: 8px; }
+    .quick-actions .btn { flex: 1; padding: 13px; font-size: 14px; border-radius: 11px; }
+
+    /* 模式切换 */
+    .view-toggle {
+      display: flex; background: rgba(255,255,255,.1); border-radius: 8px;
+      padding: 3px; gap: 3px; margin: 8px 14px 0;
+    }
+    .view-toggle button {
+      flex: 1; padding: 7px; border-radius: 6px; border: none;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      background: transparent; color: rgba(255,255,255,.6); transition: all .2s;
+    }
+    .view-toggle button.active { background: white; color: #7c3aed; }
+
+    /* Loading */
     .overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(15,23,42,.55); z-index: 200;
-      align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+      background: rgba(15,23,42,.85); z-index: 300;
+      align-items: center; justify-content: center; flex-direction: column;
     }
     .overlay.show { display: flex; }
-    .overlay .big-spinner {
-      width: 52px; height: 52px; border: 4px solid rgba(255,255,255,.25);
-      border-top-color: white; border-radius: 50%; animation: spin .8s linear infinite;
+    .overlay p { color: white; margin-top: 14px; font-size: 16px; font-weight: 600; }
+    .spinner {
+      width: 48px; height: 48px; border: 4px solid rgba(167,139,250,.3);
+      border-top-color: #a78bfa; border-radius: 50%;
+      animation: spin .7s linear infinite;
     }
-    .overlay p { color: white; font-size: 15px; font-weight: 600; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* tip tag */
-    .tip-tag {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: #fffbeb; border: 1px solid #fde68a;
-      color: #92400e; font-size: 11px; padding: 3px 9px;
-      border-radius: 20px; margin-bottom: 10px;
+    .toast {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+      background: #1e293b; color: white; padding: 11px 20px;
+      border-radius: 30px; font-size: 14px; z-index: 999;
+      opacity: 0; transition: opacity .3s; white-space: nowrap;
     }
+    .toast.show { opacity: 1; }
 
     /* Modal */
     .modal-overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.5); z-index: 300;
-      align-items: center; justify-content: center;
-      padding: 20px;
+      background: rgba(0,0,0,.5); z-index: 400;
+      align-items: center; justify-content: center; padding: 20px;
     }
     .modal-overlay.show { display: flex; }
     .modal {
-      background: white; border-radius: 16px;
-      padding: 24px; width: 100%; max-width: 400px;
-      max-height: 80vh; overflow-y: auto;
+      background: white; border-radius: 16px; padding: 22px;
+      width: 100%; max-width: 380px;
     }
-    .modal h3 { margin-bottom: 16px; font-size: 18px; }
+    .modal h3 { margin-bottom: 14px; font-size: 17px; }
     .modal input {
-      width: 100%; padding: 12px; border: 2px solid var(--border);
-      border-radius: 10px; font-size: 15px; margin-bottom: 16px;
+      width: 100%; padding: 11px; border: 2px solid var(--border);
+      border-radius: 9px; font-size: 15px; margin-bottom: 14px;
     }
     .modal-actions { display: flex; gap: 10px; }
-    .modal-actions .btn { flex: 1; }
 
-    /* Image preview */
-    .image-preview {
-      max-width: 100%; border-radius: 8px; margin-bottom: 12px;
+    /* Stats */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;
     }
+    .stat-box {
+      background: white; border-radius: 12px; padding: 14px 10px;
+      text-align: center; box-shadow: 0 1px 5px rgba(0,0,0,.07);
+    }
+    .stat-box .n { font-size: 26px; font-weight: 800; }
+    .stat-box .l { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* Leaderboard */
+    .lb-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .lb-rank { font-size: 20px; min-width: 32px; text-align: center; font-weight: 800; }
+    .lb-rank.gold { color: #f59e0b; }
+    .lb-rank.silver { color: #94a3b8; }
+    .lb-rank.bronze { color: #b45309; }
+    .lb-name { flex: 1; font-weight: 600; font-size: 15px; }
+    .lb-score { font-size: 18px; font-weight: 800; color: var(--gemini); }
+    .lb-badge {
+      font-size: 11px; padding: 3px 8px; border-radius: 10px;
+      font-weight: 600;
+    }
+    .lb-badge.top3 { background: #fef3c7; color: #d97706; }
+    .lb-badge.top5 { background: #ede9fe; color: #7c3aed; }
+
+    /* API config */
+    .api-config {
+      background: linear-gradient(135deg, #f3f0ff, #ede9fe);
+      border: 2px dashed #a78bfa; border-radius: 12px;
+      padding: 14px; margin-bottom: 14px;
+    }
+    .api-config h4 { font-size: 14px; color: #7c3aed; margin-bottom: 9px; }
+    .api-config input {
+      width: 100%; padding: 10px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 14px; font-family: monospace; margin-bottom: 8px;
+    }
+
+    /* OCR options */
+    .ocr-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .ocr-option {
+      padding: 12px; border: 2px solid var(--border); border-radius: 10px;
+      cursor: pointer; text-align: center; transition: all .2s;
+    }
+    .ocr-option.selected { border-color: var(--gemini); background: #f3f0ff; }
+    .ocr-option .name { font-weight: 700; font-size: 14px; }
+    .ocr-option .desc { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    /* Photo preview */
+    #photoPreviewCard {
+      display: none; margin-bottom: 14px;
+    }
+    #photoPreviewImg {
+      width: 100%; border-radius: 10px; display: block;
+    }
+
+    /* 班级切换 */
+    .class-switch {
+      display: flex; gap: 8px; margin-bottom: 14px;
+    }
+    .class-btn {
+      flex: 1; padding: 12px; border-radius: 11px; border: 2px solid var(--border);
+      font-size: 15px; font-weight: 700; cursor: pointer; background: white;
+      color: var(--muted); transition: all .2s; text-align: center;
+    }
+    .class-btn.active {
+      background: linear-gradient(135deg,#667eea,#764ba2);
+      color: white; border-color: transparent;
+      box-shadow: 0 3px 10px rgba(102,126,234,.35);
+    }
+
+    /* 学生选择器（批改页） */
+    .stu-selector {
+      background: white; border-radius: var(--radius);
+      padding: 14px; margin-bottom: 14px;
+      box-shadow: 0 1px 6px rgba(0,0,0,.07);
+    }
+    .stu-selector-title {
+      font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .stu-search {
+      width: 100%; padding: 9px 12px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 14px; margin-bottom: 8px; outline: none;
+    }
+    .stu-search:focus { border-color: var(--gemini); }
+    .stu-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+      max-height: 200px; overflow-y: auto;
+    }
+    .stu-chip {
+      padding: 7px 4px; border-radius: 8px; border: 1.5px solid var(--border);
+      font-size: 12px; text-align: center; cursor: pointer; transition: all .15s;
+      line-height: 1.3; background: white;
+    }
+    .stu-chip .sno { font-size: 10px; color: var(--muted); display: block; }
+    .stu-chip .sname { font-weight: 700; display: block; }
+    .stu-chip:hover { border-color: var(--gemini); background: #f3f0ff; }
+    .stu-chip.done { background: #f0fdf4; border-color: #86efac; }
+    .stu-chip.done .sname { color: #16a34a; }
+    .stu-chip.selected { background: var(--gemini); border-color: var(--gemini); }
+    .stu-chip.selected .sname, .stu-chip.selected .sno { color: white; }
+
+    /* 全班进度条 */
+    .progress-section {
+      background: white; border-radius: var(--radius);
+      padding: 14px; margin-bottom: 14px;
+      box-shadow: 0 1px 6px rgba(0,0,0,.07);
+    }
+    .progress-section-title {
+      font-size: 13px; font-weight: 700; margin-bottom: 10px;
+      display: flex; justify-content: space-between;
+    }
+    .progress-track {
+      background: var(--bg); border-radius: 8px; height: 10px; overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .progress-fill {
+      height: 100%; background: linear-gradient(90deg,#667eea,#764ba2);
+      border-radius: 8px; transition: width .4s ease;
+    }
+    .progress-detail {
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: var(--muted);
+    }
+
+    /* 结果页学生info */
+    .result-stu-info {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .result-stu-no {
+      background: rgba(255,255,255,.2); border-radius: 8px;
+      padding: 3px 10px; font-size: 13px; font-weight: 700; color: white;
+    }
+
+    /* 未批名单 */
+    .pending-grid {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 6px;
+    }
+    .pending-chip {
+      padding: 6px 4px; border-radius: 7px; background: #fef2f2;
+      border: 1px solid #fecaca; font-size: 12px; text-align: center;
+    }
+    .pending-chip .pno { font-size: 10px; color: #ef4444; display:block; }
+    .pending-chip .pname { font-weight: 600; display:block; color: #dc2626; }
   </style>
 </head>
 <body>
 
-<!-- Loading overlay -->
+<!-- Loading -->
 <div class="overlay" id="loadingOverlay">
-  <div class="big-spinner"></div>
-  <p id="loadingMsg">正在识别...</p>
+  <div class="spinner"></div>
+  <p id="loadingMsg">AI识别中...</p>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
+
+<!-- Student Picker Modal -->
+<div class="modal-overlay" id="stuPickerModal">
+  <div class="modal" style="max-width:440px;">
+    <h3>👤 选择学生</h3>
+    <input type="text" id="stuPickerSearch" placeholder="搜索姓名或学号..." oninput="filterPickerStudents()" style="margin-bottom:12px;">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:300px;overflow-y:auto;" id="stuPickerGrid"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn btn-secondary" onclick="closeStuPicker()">取消</button>
+      <button class="btn btn-secondary" onclick="selectManualEntry()">手动输入</button>
+    </div>
+  </div>
+</div>
 
 <!-- New Task Modal -->
 <div class="modal-overlay" id="newTaskModal">
   <div class="modal">
     <h3>📝 新建听写任务</h3>
-    <input type="text" id="newTaskName" placeholder="输入任务名称，如：Unit 3 单词听写">
+    <input type="text" id="newTaskName" placeholder="如：Unit 3 单词听写">
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeNewTaskModal()">取消</button>
-      <button class="btn btn-primary" onclick="createNewTask()">创建</button>
+      <button class="btn btn-gemini" onclick="createNewTask()">创建</button>
     </div>
   </div>
 </div>
 
-<!-- Header -->
+<!-- ===== 全屏批改结果面板 ===== -->
+<div id="resultOverlay">
+  <div class="result-header">
+    <div>
+      <div style="font-size:11px;color:rgba(255,255,255,.7);">正在批改</div>
+      <div class="stu-name" id="rHeaderName">学生姓名</div>
+    </div>
+    <div class="result-score-badge" id="rScoreBadge">0%</div>
+  </div>
+
+  <!-- 视图切换 -->
+  <div class="view-toggle">
+    <button id="btnViewList" class="active" onclick="switchResultView('list')">📋 列表模式</button>
+    <button id="btnViewPhoto" onclick="switchResultView('photo')">🖼 照片标注</button>
+  </div>
+
+  <!-- 列表结果区 -->
+  <div id="resultList"></div>
+
+  <!-- 照片标注区 -->
+  <div id="photoAnnotateWrap" style="display:none;">
+    <canvas id="annotateCanvas"></canvas>
+  </div>
+
+  <div class="result-bottom">
+    <!-- 汇总数据 -->
+    <div class="result-summary">
+      <div class="sum-box ok">
+        <div class="n" id="rCorrect">0</div>
+        <div class="l">答对</div>
+      </div>
+      <div class="sum-box err">
+        <div class="n" id="rWrong">0</div>
+        <div class="l">答错</div>
+      </div>
+      <div class="sum-box">
+        <div class="n" id="rUncertain" style="color:#fbbf24;">0</div>
+        <div class="l">待确认</div>
+      </div>
+      <div class="sum-box">
+        <div class="n" id="rTotal" style="color:rgba(255,255,255,.8);">0</div>
+        <div class="l">总题</div>
+      </div>
+    </div>
+
+    <!-- 学生确认/匹配 -->
+    <div class="stu-input-wrap" id="stuMatchBox">
+      <div style="flex:1;">
+        <div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:3px;">识别到的学生</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="stuMatchName" style="font-size:16px;font-weight:800;color:white;">—</span>
+          <span id="stuMatchNo" style="font-size:12px;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:6px;color:rgba(255,255,255,.8);">—</span>
+          <span id="stuMatchBadge" style="font-size:11px;display:none;"></span>
+        </div>
+      </div>
+      <button onclick="showStuPicker()" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);border-radius:8px;color:white;padding:8px 12px;font-size:13px;cursor:pointer;">换人</button>
+    </div>
+
+    <!-- 手动输入（名单外） -->
+    <div id="stuManualBox" style="display:none;">
+      <div class="stu-input-wrap">
+        <label>手动输入</label>
+        <input type="text" id="stuNameInput" placeholder="姓名或学号">
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="quick-actions">
+      <button class="btn btn-success" onclick="confirmAllCorrect()">✅ 全对确认</button>
+      <button class="btn btn-gemini" onclick="saveAndNext()">💾 保存→下一个</button>
+    </div>
+    <div class="quick-actions">
+      <button class="btn btn-secondary" style="color:#334155;" onclick="closeResult()">↩ 返回拍照</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 主界面 ===== -->
 <header>
-  <div class="logo">📝</div>
+  <div class="logo">✏️</div>
   <div>
     <h1>听写批改助手</h1>
-    <p>AI智能识别 · 任务管理 · 精准批改</p>
+    <p>AI识别 · 拍照即批 · 快速标注</p>
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="progress-num" id="hdrProgress">0</div>
+    <div class="progress-lbl">已批改</div>
   </div>
 </header>
 
-<!-- Tabs -->
 <div class="tabs">
-  <button class="tab-btn active" onclick="switchTab('setup')">✏️ 设置答案</button>
-  <button class="tab-btn" onclick="switchTab('scan')">📷 扫描批改</button>
+  <button class="tab-btn active" onclick="switchTab('setup')">✏️ 设置</button>
+  <button class="tab-btn" onclick="switchTab('scan')">📷 批改</button>
   <button class="tab-btn" onclick="switchTab('stats')">📊 统计</button>
+  <button class="tab-btn" onclick="switchTab('rank')">🏆 排行</button>
 </div>
 
-<!-- ====== TAB 1: 设置答案 ====== -->
+<!-- ===== 设置面板 ===== -->
 <div class="panel active" id="panel-setup">
-  <!-- Task Selector -->
-  <div class="task-selector">
-    <h3>📚 当前任务</h3>
-    <div class="task-list" id="taskList">
-      <!-- Tasks will be rendered here -->
-    </div>
+
+  <!-- 班级切换 -->
+  <div class="class-switch">
+    <button class="class-btn active" id="classBtnSetup16" onclick="switchClass('16')">16班</button>
+    <button class="class-btn" id="classBtnSetup18" onclick="switchClass('18')">18班</button>
   </div>
 
-  <!-- Answer Input Methods -->
-  <div class="card">
-    <div class="card-title">📋 录入本次听写答案</div>
-    <div class="input-methods">
-      <button class="method-btn active" onclick="setAnswerMethod('manual')" id="btn-manual">
-        ⌨️ 手动输入
-      </button>
-      <button class="method-btn" onclick="setAnswerMethod('camera')" id="btn-camera">
-        📷 拍照识别
-      </button>
-      <button class="method-btn" onclick="setAnswerMethod('file')" id="btn-file">
-        📄 文件导入
-      </button>
-    </div>
+  <div class="task-bar">
+    <h3>📚 选择任务</h3>
+    <div class="task-list" id="taskList"></div>
+  </div>
 
-    <!-- Manual Input -->
-    <div id="answer-manual">
-      <div class="tip-tag">💡 每行一个单词或句子，支持中英文混合</div>
-      <textarea id="answerInput" placeholder="例如：
+  <div class="api-config">
+    <h4>🔑 Gemini API 配置</h4>
+    <input type="password" id="geminiApiKey" placeholder="粘贴 Gemini API Key">
+    <div class="hint">
+      访问 <a href="https://ai.google.dev" target="_blank" style="color:#7c3aed;">ai.google.dev</a> 获取 API Key（免费额度充足）
+    </div>
+    <button class="btn btn-gemini btn-sm" style="margin-top:8px;width:auto;" onclick="saveGeminiConfig()">
+      保存配置
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 本次听写答案（每行一个）</div>
+    <textarea id="answerInput" placeholder="例如：
 appreciate
 enthusiasm
 accomplish
 make progress
-be responsible for
-苹果 apple
-..."></textarea>
-      <div class="hint">共 <span id="wordCount">0</span> 个词条</div>
-    </div>
+苹果 apple"></textarea>
+    <div class="hint">共 <span id="wordCount">0</span> 个答案</div>
+  </div>
 
-    <!-- Camera Input -->
-    <div id="answer-camera" style="display:none;">
-      <div class="tip-tag">📷 对准答案纸拍照，AI自动识别</div>
-      <div class="camera-wrap" style="aspect-ratio: 3/4;">
-        <video id="answerVideo" autoplay playsinline muted></video>
-        <div class="camera-overlay">
-          <div class="scan-frame"><div class="scan-line"></div></div>
-          <div class="scan-hint">将答案纸放入框内</div>
-        </div>
+  <div class="card">
+    <div class="card-title">🤖 识别引擎</div>
+    <div class="ocr-compare">
+      <div class="ocr-option selected" onclick="selectOcr('gemini')" id="ocr-gemini">
+        <div class="name">✨ Gemini AI</div>
+        <div class="desc">推荐 · 手写识别最强</div>
       </div>
-      <canvas id="answerCanvas" style="display:none;"></canvas>
-      <button class="btn btn-primary" style="margin-top:12px;" onclick="captureAnswerImage()">
-        📸 拍照识别答案
-      </button>
-    </div>
-
-    <!-- File Input -->
-    <div id="answer-file" style="display:none;">
-      <div class="tip-tag">📄 支持 .txt 文件，每行一个单词</div>
-      <input type="file" id="answerFileInput" accept=".txt,.doc,.docx" style="display:none;" onchange="handleAnswerFile(event)">
-      <button class="btn btn-secondary" onclick="document.getElementById('answerFileInput').click()">
-        📁 选择文件
-      </button>
-    </div>
-
-    <!-- Recognized Preview -->
-    <div class="recognized-preview" id="answerPreview" style="display:none;">
-      <h4>🤖 AI识别结果（可编辑）</h4>
-      <textarea id="recognizedAnswerText" style="min-height:100px; margin-bottom:8px;"></textarea>
-      <button class="edit-btn" onclick="useRecognizedAnswer()">✅ 使用此答案</button>
+      <div class="ocr-option" onclick="selectOcr('baidu')" id="ocr-baidu">
+        <div class="name">🔍 百度OCR</div>
+        <div class="desc">备用 · 50次/天免费</div>
+      </div>
     </div>
   </div>
 
-  <!-- Settings -->
   <div class="card">
     <div class="card-title">⚙️ 批改设置</div>
-    <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:12px;">
-      <input type="checkbox" id="caseInsensitive" checked style="width:18px;height:18px;accent-color:var(--primary)">
+    <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:10px;">
+      <input type="checkbox" id="caseInsensitive" checked style="width:18px;height:18px;">
       忽略大小写
     </label>
-    <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:12px;">
-      <input type="checkbox" id="ignorePunctuation" checked style="width:18px;height:18px;accent-color:var(--primary)">
-      忽略标点符号
-    </label>
-    <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:12px;">
-      <input type="checkbox" id="fuzzyMatch" checked style="width:18px;height:18px;accent-color:var(--primary)">
-      智能纠错（相似度>80%算对）
+    <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:10px;">
+      <input type="checkbox" id="smartMatch" checked style="width:18px;height:18px;">
+      智能匹配（相似度>85%算对）
     </label>
     <label style="display:flex;align-items:center;gap:10px;font-size:14px;">
-      <input type="checkbox" id="strictOrder" checked style="width:18px;height:18px;accent-color:var(--primary)">
-      严格顺序匹配（推荐）
+      <input type="checkbox" id="autoAnnotate" checked style="width:18px;height:18px;">
+      识别完自动切换照片标注模式
     </label>
   </div>
 
-  <button class="btn btn-primary" onclick="saveCurrentTask()">
-    💾 保存答案并开始批改
+  <div class="card">
+    <div class="card-title">🎖 奖励设置</div>
+    <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:6px;">发放奖励的名次（班级排行榜）</label>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary btn-sm reward-btn" data-n="3" onclick="setRewardTop(3)">前3名</button>
+      <button class="btn btn-secondary btn-sm reward-btn" data-n="5" onclick="setRewardTop(5)">前5名</button>
+      <button class="btn btn-secondary btn-sm reward-btn" data-n="10" onclick="setRewardTop(10)">前10名</button>
+    </div>
+    <div class="hint" style="margin-top:6px;">当前设置：班级 <span id="rewardTopDisplay" style="font-weight:700;color:#7c3aed;">前5名</span> 可获奖励</div>
+  </div>
+
+  <button class="btn btn-gemini" onclick="saveTaskAndStart()">
+    💾 保存并开始批改
   </button>
 </div>
 
-<!-- ====== TAB 2: 扫描批改 ====== -->
+<!-- ===== 批改面板 ===== -->
 <div class="panel" id="panel-scan">
-  <!-- OCR Status -->
-  <div class="ocr-status loading" id="ocrStatus">
-    <div class="spinner" id="ocrSpinner"></div>
-    <span id="ocrStatusText">正在加载识别引擎...</span>
+
+  <!-- 班级切换 -->
+  <div class="class-switch">
+    <button class="class-btn active" id="classBtn16" onclick="switchClass('16')">16班</button>
+    <button class="class-btn" id="classBtn18" onclick="switchClass('18')">18班</button>
   </div>
 
-  <!-- Current Task Info -->
-  <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <div>
-        <div style="font-size:12px; opacity:0.8; margin-bottom:4px;">当前任务</div>
-        <div style="font-size:16px; font-weight:700;" id="currentTaskName">未选择任务</div>
-      </div>
-      <div style="text-align:right;">
-        <div style="font-size:12px; opacity:0.8; margin-bottom:4px;">答案数量</div>
-        <div style="font-size:20px; font-weight:800;" id="currentTaskCount">0</div>
-      </div>
+  <!-- 全班进度 -->
+  <div class="progress-section">
+    <div class="progress-section-title">
+      <span>📋 本次批改进度</span>
+      <span id="progressText" style="color:var(--gemini);font-weight:800;">0 / 0</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <div class="progress-detail">
+      <span id="progressDone" style="color:#16a34a;font-weight:600;">✅ 已批 0</span>
+      <span id="progressLeft" style="color:#dc2626;font-weight:600;">⏳ 未批 0</span>
     </div>
   </div>
 
-  <!-- Student Camera -->
+  <!-- 学生选择器 -->
+  <div class="stu-selector">
+    <div class="stu-selector-title">
+      <span>👤 选择当前学生</span>
+      <span id="stuSelectorHint" style="font-size:11px;">点击选择 · AI识别后自动匹配</span>
+    </div>
+    <input class="stu-search" id="stuSearchInput" placeholder="搜索姓名或学号..." oninput="filterStudents()">
+    <div class="stu-grid" id="stuGrid"></div>
+  </div>
+
+  <div style="background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:var(--radius);padding:14px;margin-bottom:14px;color:white;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div style="font-size:11px;opacity:.8;">当前任务</div>
+      <div style="font-size:16px;font-weight:800;" id="currentTaskName">未选择</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:22px;font-weight:900;" id="currentTaskCount">0</div>
+      <div style="font-size:11px;opacity:.8;">个答案</div>
+    </div>
+  </div>
+
+  <!-- 照片预览（拍完后显示） -->
+  <div class="card" id="photoPreviewCard">
+    <div class="card-title">📸 已拍照片预览</div>
+    <img id="photoPreviewImg" alt="">
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn btn-gemini" onclick="recognizeCurrentPhoto()">✨ 重新识别</button>
+      <button class="btn btn-secondary" onclick="clearPhoto()">🗑 重拍</button>
+    </div>
+  </div>
+
   <div class="card">
-    <div class="card-title">📷 对准学生听写本</div>
+    <div class="card-title">📷 拍照识别</div>
     <div class="camera-wrap">
       <video id="videoEl" autoplay playsinline muted></video>
-      <div class="camera-overlay">
+      <div style="position:absolute;inset:0;pointer-events:none;">
         <div class="scan-frame"><div class="scan-line"></div></div>
-        <div class="scan-hint">将手写内容放入框内，保持稳定</div>
+        <div class="scan-hint">将作业本放入框内 · 保持稳定</div>
       </div>
     </div>
     <canvas id="canvasEl"></canvas>
-    <div style="margin-top:12px;">
-      <button class="btn btn-primary" id="captureBtn" onclick="captureAndRecognize()" disabled>
-        📸 拍照批改
+    <div style="margin-top:12px; display:flex; gap:10px;">
+      <button class="btn btn-gemini" id="captureBtn" onclick="capturePhoto()" style="flex:2;">
+        📸 拍照
+      </button>
+      <button class="btn btn-secondary" onclick="switchCamera()" style="flex:1;font-size:13px;">
+        🔄 切换镜头
       </button>
     </div>
   </div>
 
-  <!-- Manual Input -->
-  <div class="card">
-    <div class="card-title">⌨️ 或手动输入学生答案</div>
-    <textarea id="studentInput" placeholder="如拍照识别不准，可在此输入学生答案（每行一个）..." style="min-height:90px;"></textarea>
-    <div style="margin-top:10px;">
-      <button class="btn btn-success" onclick="gradeManual()">
-        ✅ 立即批改
-      </button>
-    </div>
-  </div>
-
-  <!-- Result Section -->
-  <div id="resultSection" style="display:none;">
-    <div class="card">
-      <div class="card-title">🎯 批改结果</div>
-
-      <div class="recognized-preview">
-        <h4>📝 识别到的学生答案</h4>
-        <div class="text-content" id="recognizedRaw"></div>
-      </div>
-
-      <div class="result-meta" id="resultMeta"></div>
-      <div class="words-grid" id="wordsGrid"></div>
-
-      <div class="wrong-detail" id="wrongDetail" style="display:none;">
-        <h4>❌ 错误详情</h4>
-        <div id="wrongList"></div>
-      </div>
-
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="captureAgain()">🔄 再批一份</button>
-        <button class="btn btn-primary" onclick="switchTab('stats')">📊 查看统计</button>
-      </div>
-    </div>
+  <div class="hint" style="text-align:center;padding-bottom:10px;">
+    拍照后会自动开始AI识别 · 结果全屏展示方便对照批改
   </div>
 </div>
 
-<!-- ====== TAB 3: 统计 ====== -->
+<!-- ===== 统计面板 ===== -->
 <div class="panel" id="panel-stats">
-  <!-- Task Overview -->
-  <div class="card">
-    <div class="card-title">📚 任务概览</div>
-    <div id="taskStatsList">
-      <div class="empty-state">
-        <div class="emoji">📭</div>
-        <p>还没有任务<br>先去创建听写任务吧</p>
-      </div>
+  <div class="stats-grid">
+    <div class="stat-box">
+      <div class="n" id="statTasks">0</div>
+      <div class="l">任务数</div>
+    </div>
+    <div class="stat-box">
+      <div class="n" id="statStudents">0</div>
+      <div class="l">已批改</div>
+    </div>
+    <div class="stat-box">
+      <div class="n" id="statErrors">0</div>
+      <div class="l">总错误</div>
     </div>
   </div>
 
-  <!-- Global Stats -->
-  <div class="stats-summary">
-    <div class="stat-box blue">
-      <div class="num" id="totalTasks">0</div>
-      <div class="lbl">任务数</div>
-    </div>
-    <div class="stat-box green">
-      <div class="num" id="totalGraded">0</div>
-      <div class="lbl">批改次数</div>
-    </div>
-    <div class="stat-box red">
-      <div class="num" id="totalErrors">0</div>
-      <div class="lbl">总错误</div>
-    </div>
+  <div class="card">
+    <div class="card-title">📊 高频错误词（当前任务）</div>
+    <div id="errorStats"></div>
   </div>
 
-  <!-- Current Task Errors -->
   <div class="card">
-    <div class="stats-header">
-      <div class="card-title" style="margin:0">🔴 高频错误（当前任务）</div>
-    </div>
-    <div id="errorTableWrap">
-      <div class="empty-state">
-        <div class="emoji">📊</div>
-        <p>暂无错误数据</p>
-      </div>
-    </div>
+    <div class="card-title">📋 批改记录</div>
+    <div id="reviewHistory"></div>
   </div>
 </div>
 
-<!-- ========== SCRIPTS ========== -->
-<script src="https://unpkg.com/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
+<!-- ===== 排行榜面板 ===== -->
+<div class="panel" id="panel-rank">
+  <!-- 班级切换 -->
+  <div class="class-switch">
+    <button class="class-btn active" id="classBtnRank16" onclick="switchClass('16')">16班</button>
+    <button class="class-btn" id="classBtnRank18" onclick="switchClass('18')">18班</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏆 班级听写排行榜</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+      按最高得分排列 · <span id="rewardTopNote" style="color:#7c3aed;font-weight:700;">前5名</span>可获奖励
+    </div>
+    <div id="leaderboard"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⏳ 尚未批改</div>
+    <div id="pendingList"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📈 需要加强练习</div>
+    <div id="weakWords"></div>
+  </div>
+</div>
 
 <script>
+// ===== 两班名单 =====
+const CLASS_ROSTER = {
+  '16': [
+    {no:'1601',name:'李江坤'}, {no:'1602',name:'王成材'}, {no:'1603',name:'马家鑫'},
+    {no:'1604',name:'徐文钦'}, {no:'1605',name:'祝尔康'}, {no:'1606',name:'汪明辉'},
+    {no:'1607',name:'汪启航'}, {no:'1608',name:'高建国'}, {no:'1609',name:'韩金洋'},
+    {no:'1610',name:'饶安然'}, {no:'1611',name:'桑龙林'}, {no:'1612',name:'储海越'},
+    {no:'1613',name:'黎露阳'}, {no:'1614',name:'刘俊逸'}, {no:'1615',name:'潘登科'},
+    {no:'1616',name:'李铖晨'}, {no:'1617',name:'程亮杰'}, {no:'1618',name:'程思源'},
+    {no:'1619',name:'朱梓瑞'}, {no:'1620',name:'陈雨涵'}, {no:'1621',name:'杜紫妍'},
+    {no:'1622',name:'张芮涵'}, {no:'1623',name:'崔桢娴'}, {no:'1624',name:'李佳苏'},
+    {no:'1625',name:'张荣蔡晨'},{no:'1626',name:'马佳檬'}, {no:'1627',name:'杨鸿涛'},
+    {no:'1628',name:'王晨曦'}, {no:'1629',name:'汪一诺'}, {no:'1630',name:'金玉童'},
+    {no:'1631',name:'曹德玉'}, {no:'1632',name:'吴俊烽'}, {no:'1633',name:'石岩松'},
+    {no:'1634',name:'黎鑫慧'}, {no:'1635',name:'胡坤钰'}, {no:'1636',name:'徐正宇'},
+    {no:'1637',name:'孙梓沫'}, {no:'1638',name:'李子骞'}, {no:'1639',name:'程锦瑞'},
+    {no:'1640',name:'李欣贻'}, {no:'1641',name:'邱元诚'}, {no:'1642',name:'项兴宁'},
+    {no:'1643',name:'陈鑫垚'}, {no:'1644',name:'奚绍伟'}, {no:'1645',name:'刘佳怡'},
+    {no:'1646',name:'余倩'},   {no:'1647',name:'朱尹浩'}, {no:'1648',name:'但孝妍'},
+    {no:'1649',name:'刘瑞齐'}, {no:'1650',name:'徐梦欣'}, {no:'1651',name:'黄有俊'},
+    {no:'1652',name:'朱雨涵'}, {no:'1653',name:'涂成圆'}, {no:'1654',name:'董宇'},
+    {no:'1655',name:'解文博'}, {no:'1656',name:'朱慧如'}
+  ],
+  '18': [
+    {no:'1801',name:'王俊杰'}, {no:'1802',name:'张路远'}, {no:'1803',name:'吴俊杰'},
+    {no:'1804',name:'吴显杨'}, {no:'1805',name:'易欣妍'}, {no:'1806',name:'徐梦媛'},
+    {no:'1807',name:'雷梦童'}, {no:'1808',name:'李新兵'}, {no:'1809',name:'陆瑞柯'},
+    {no:'1810',name:'郭建鑫'}, {no:'1811',name:'李永沁'}, {no:'1812',name:'邓中明'},
+    {no:'1813',name:'余冰洁'}, {no:'1814',name:'丁文慧'}, {no:'1815',name:'张安娜'},
+    {no:'1816',name:'吴培森'}, {no:'1817',name:'王暮雨'}, {no:'1818',name:'胡仁涛'},
+    {no:'1819',name:'高畅'},   {no:'1820',name:'吴偌妍'}, {no:'1821',name:'金梦媛'},
+    {no:'1822',name:'黄柯浩'}, {no:'1823',name:'谢艺'},   {no:'1824',name:'彭子轩'},
+    {no:'1825',name:'潘高'},   {no:'1826',name:'储怡芳'}, {no:'1827',name:'万佑科'},
+    {no:'1828',name:'黄思语'}, {no:'1829',name:'许志枫'}, {no:'1830',name:'董明珠'},
+    {no:'1831',name:'张宇翔'}, {no:'1832',name:'项梦铃'}, {no:'1833',name:'刘庆琳'},
+    {no:'1834',name:'张俊宝'}, {no:'1835',name:'郑启航'}, {no:'1836',name:'李玥瑶'},
+    {no:'1837',name:'汪圆媛'}, {no:'1838',name:'王聃琪'}, {no:'1839',name:'黄梦辰'},
+    {no:'1840',name:'刘君杰'}, {no:'1841',name:'熊冰凌'}, {no:'1842',name:'刘星玥'},
+    {no:'1843',name:'何铭储'}, {no:'1844',name:'李梦雅'}, {no:'1845',name:'韦文端'},
+    {no:'1846',name:'许晓莉'}, {no:'1847',name:'余道洋'}, {no:'1848',name:'杨昊然'},
+    {no:'1849',name:'万鹏程'}, {no:'1850',name:'李抒沛'}, {no:'1851',name:'叶梓琰'},
+    {no:'1852',name:'吴宗宪'}, {no:'1853',name:'杜沐阳'}, {no:'1854',name:'詹庆昊冉'}
+  ]
+};
+
 // ===== STATE =====
 let stream = null;
-let answerStream = null;
-let tesseractWorker = null;
-let ocrReady = false;
+let currentFacing = 'environment';
+let currentClass = '16';
 let currentTaskId = null;
-let tasks = JSON.parse(localStorage.getItem('dictation_tasks') || '[]');
-let currentRecognizedText = '';
+let tasks = JSON.parse(localStorage.getItem('dict_tasks_v2') || '[]');
+let geminiConfig = JSON.parse(localStorage.getItem('gemini_config') || '{}');
+let currentReviewResults = [];
+let selectedOcr = 'gemini';
+let capturedImageDataUrl = null;
+let rewardTop = parseInt(localStorage.getItem('dict_reward_top') || '5');
+let currentStudentNo = null; // 当前选中的学号
+let stuGridFilter = '';
 
 // ===== INIT =====
 window.addEventListener('DOMContentLoaded', () => {
-  initOCR();
+  initCamera();
   renderTaskList();
   updateWordCount();
   document.getElementById('answerInput').addEventListener('input', updateWordCount);
-  
-  // Create default task if none exists
-  if (tasks.length === 0) {
-    createTask('默认任务');
+  if (geminiConfig.apiKey) {
+    document.getElementById('geminiApiKey').value = geminiConfig.apiKey;
   }
+  if (tasks.length === 0) { createTask('默认任务'); }
   selectTask(tasks[0]?.id);
+  updateRewardUI();
+  renderStuGrid();
+  updateProgressBar();
 });
+
+// ===== 班级切换 =====
+function switchClass(cls) {
+  currentClass = cls;
+  currentStudentNo = null;
+  // 更新所有班级切换按钮
+  ['16','18'].forEach(c => {
+    ['Setup','','Rank'].forEach(suffix => {
+      const btn = document.getElementById(`classBtnSetup${c}`) ||
+                  document.getElementById(`classBtn${c}`) ||
+                  document.getElementById(`classBtnRank${c}`);
+    });
+    const ids = [`classBtnSetup${c}`, `classBtn${c}`, `classBtnRank${c}`];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.className = `class-btn${c === cls ? ' active' : ''}`;
+    });
+  });
+  renderStuGrid();
+  updateProgressBar();
+  renderLeaderboard();
+}
+
+// ===== 学生网格 =====
+function renderStuGrid(containerId, filter) {
+  containerId = containerId || 'stuGrid';
+  filter = filter !== undefined ? filter : stuGridFilter;
+  const task = tasks.find(t => t.id === currentTaskId);
+  const doneSets = new Set((task?.students || []).map(s => s.studentNo).filter(Boolean));
+
+  const roster = CLASS_ROSTER[currentClass] || [];
+  const filtered = filter
+    ? roster.filter(s => s.name.includes(filter) || s.no.includes(filter))
+    : roster;
+
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = filtered.map(s => {
+    const isDone = doneSets.has(s.no);
+    const isSelected = s.no === currentStudentNo;
+    return `<div class="stu-chip ${isDone ? 'done' : ''} ${isSelected ? 'selected' : ''}"
+      onclick="${containerId === 'stuPickerGrid' ? `pickStudent('${s.no}','${s.name}')` : `selectStudent('${s.no}','${s.name}')`}">
+      <span class="sno">${s.no}</span>
+      <span class="sname">${s.name}</span>
+      ${isDone ? '<span style="font-size:9px;color:#16a34a;">✓已批</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function filterStudents() {
+  stuGridFilter = document.getElementById('stuSearchInput').value.trim();
+  renderStuGrid('stuGrid', stuGridFilter);
+}
+
+function selectStudent(no, name) {
+  currentStudentNo = no;
+  renderStuGrid(); // 刷新选中态
+  showToast(`已选：${name}（${no}）`);
+}
+
+// ===== 进度条 =====
+function updateProgressBar() {
+  const task = tasks.find(t => t.id === currentTaskId);
+  const roster = CLASS_ROSTER[currentClass] || [];
+  const total = roster.length;
+  const doneSets = new Set((task?.students || []).map(s => s.studentNo).filter(Boolean));
+  const done = roster.filter(s => doneSets.has(s.no)).length;
+  const pct = total > 0 ? Math.round(done / total * 100) : 0;
+
+  const fillEl = document.getElementById('progressFill');
+  const textEl = document.getElementById('progressText');
+  const doneEl = document.getElementById('progressDone');
+  const leftEl = document.getElementById('progressLeft');
+  if (fillEl) fillEl.style.width = pct + '%';
+  if (textEl) textEl.textContent = `${done} / ${total}`;
+  if (doneEl) doneEl.textContent = `✅ 已批 ${done}`;
+  if (leftEl) leftEl.textContent = `⏳ 未批 ${total - done}`;
+
+  document.getElementById('hdrProgress').textContent = done;
+}
+
+// ===== 学生Picker弹窗 =====
+function showStuPicker() {
+  document.getElementById('stuPickerModal').classList.add('show');
+  document.getElementById('stuPickerSearch').value = '';
+  renderStuGrid('stuPickerGrid', '');
+}
+function closeStuPicker() {
+  document.getElementById('stuPickerModal').classList.remove('show');
+}
+function pickStudent(no, name) {
+  currentStudentNo = no;
+  updateStudentDisplay(no, name);
+  renderStuGrid();
+  closeStuPicker();
+}
+function selectManualEntry() {
+  closeStuPicker();
+  document.getElementById('stuManualBox').style.display = 'block';
+  document.getElementById('stuMatchBox').style.display = 'none';
+}
+function filterPickerStudents() {
+  const q = document.getElementById('stuPickerSearch').value.trim();
+  renderStuGrid('stuPickerGrid', q);
+}
+
+function updateStudentDisplay(no, name, autoMatched) {
+  document.getElementById('stuMatchName').textContent = name || '—';
+  document.getElementById('stuMatchNo').textContent = no || '—';
+  document.getElementById('stuMatchBox').style.display = 'flex';
+  document.getElementById('stuManualBox').style.display = 'none';
+  const badge = document.getElementById('stuMatchBadge');
+  if (autoMatched) {
+    badge.style.display = 'inline';
+    badge.textContent = '🤖 AI识别';
+    badge.style.cssText = 'background:rgba(124,58,237,.3);color:#c4b5fd;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ===== REWARD TOP =====
+function setRewardTop(n) {
+  rewardTop = n;
+  localStorage.setItem('dict_reward_top', n);
+  updateRewardUI();
+  showToast(`已设置：班级前${n}名可获奖励`);
+}
+function updateRewardUI() {
+  document.getElementById('rewardTopDisplay').textContent = `前${rewardTop}名`;
+  document.getElementById('rewardTopNote').textContent = `前${rewardTop}名`;
+  document.querySelectorAll('.reward-btn').forEach(btn => {
+    btn.className = `btn btn-sm reward-btn ${parseInt(btn.dataset.n) === rewardTop ? 'btn-gemini' : 'btn-secondary'}`;
+  });
+}
+
+// ===== CONFIG =====
+function saveGeminiConfig() {
+  geminiConfig = { apiKey: document.getElementById('geminiApiKey').value.trim() };
+  localStorage.setItem('gemini_config', JSON.stringify(geminiConfig));
+  showToast('Gemini 配置已保存');
+}
+function selectOcr(engine) {
+  selectedOcr = engine;
+  document.querySelectorAll('.ocr-option').forEach(el => el.classList.remove('selected'));
+  document.getElementById(`ocr-${engine}`).classList.add('selected');
+}
 
 // ===== TASK MANAGEMENT =====
 function createTask(name) {
   const task = {
-    id: Date.now().toString(),
-    name: name || '未命名任务',
-    answers: [],
-    sessions: [],
-    errorMap: {},
+    id: Date.now().toString(), name,
+    answers: [], students: [], errorMap: {},
     createdAt: new Date().toLocaleString('zh-CN')
   };
   tasks.push(task);
   saveTasks();
   return task;
 }
-
 function saveTasks() {
-  localStorage.setItem('dictation_tasks', JSON.stringify(tasks));
+  localStorage.setItem('dict_tasks_v2', JSON.stringify(tasks));
 }
-
 function selectTask(taskId) {
   currentTaskId = taskId;
   const task = tasks.find(t => t.id === taskId);
@@ -675,552 +1039,549 @@ function selectTask(taskId) {
     updateWordCount();
   }
   renderTaskList();
-  renderTaskStats();
+  updateProgressBar();
 }
-
 function renderTaskList() {
   const container = document.getElementById('taskList');
   let html = tasks.map(task => {
     const isActive = task.id === currentTaskId;
-    const count = task.sessions?.length || 0;
+    const cnt = task.students?.length || 0;
     return `<div class="task-chip ${isActive ? 'active' : ''}" onclick="selectTask('${task.id}')">
-      ${task.name}
-      ${count > 0 ? `<span class="count">${count}</span>` : ''}
+      ${task.name}${cnt > 0 ? ` (${cnt})` : ''}
     </div>`;
   }).join('');
-  
-  html += `<div class="task-chip add-task-btn" onclick="showNewTaskModal()">+ 新建任务</div>`;
+  html += `<div class="task-chip add-task-btn" onclick="showNewTaskModal()">+ 新建</div>`;
   container.innerHTML = html;
 }
-
-function showNewTaskModal() {
-  document.getElementById('newTaskModal').classList.add('show');
-  document.getElementById('newTaskName').focus();
-}
-
+function showNewTaskModal() { document.getElementById('newTaskModal').classList.add('show'); }
 function closeNewTaskModal() {
   document.getElementById('newTaskModal').classList.remove('show');
   document.getElementById('newTaskName').value = '';
 }
-
 function createNewTask() {
   const name = document.getElementById('newTaskName').value.trim();
-  if (!name) {
-    showToast('请输入任务名称');
-    return;
-  }
+  if (!name) { showToast('请输入任务名称'); return; }
   const task = createTask(name);
   selectTask(task.id);
   closeNewTaskModal();
-  showToast('任务创建成功');
+  showToast('任务已创建');
 }
-
-function saveCurrentTask() {
+function saveTaskAndStart() {
   const task = tasks.find(t => t.id === currentTaskId);
   if (!task) return;
-  
   const answers = getAnswerLines();
-  if (answers.length === 0) {
-    showToast('请先输入答案');
-    return;
-  }
-  
+  if (answers.length === 0) { showToast('请先输入答案'); return; }
   task.answers = answers;
   saveTasks();
   selectTask(task.id);
-  showToast('答案已保存');
+  showToast('已保存，开始批改');
   switchTab('scan');
 }
 
-// ===== ANSWER INPUT METHODS =====
-function setAnswerMethod(method) {
-  document.querySelectorAll('.method-btn').forEach(btn => btn.classList.remove('active'));
-  document.getElementById(`btn-${method}`).classList.add('active');
-  
-  document.getElementById('answer-manual').style.display = method === 'manual' ? 'block' : 'none';
-  document.getElementById('answer-camera').style.display = method === 'camera' ? 'block' : 'none';
-  document.getElementById('answer-file').style.display = method === 'file' ? 'block' : 'none';
-  
-  if (method === 'camera') {
-    startAnswerCamera();
-  } else {
-    stopAnswerCamera();
-  }
-}
-
-async function startAnswerCamera() {
-  if (answerStream) return;
-  try {
-    answerStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: false
-    });
-    document.getElementById('answerVideo').srcObject = answerStream;
-  } catch(e) {
-    showToast('无法访问摄像头');
-  }
-}
-
-function stopAnswerCamera() {
-  if (answerStream) {
-    answerStream.getTracks().forEach(t => t.stop());
-    answerStream = null;
-    document.getElementById('answerVideo').srcObject = null;
-  }
-}
-
-async function captureAnswerImage() {
-  if (!ocrReady) { showToast('识别引擎未就绪'); return; }
-  
-  const video = document.getElementById('answerVideo');
-  const canvas = document.getElementById('answerCanvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  
-  showLoading('正在识别答案...');
-  try {
-    const { data } = await tesseractWorker.recognize(canvas);
-    hideLoading();
-    
-    // Process recognized text
-    const lines = data.text.split('\n')
-      .map(l => l.trim())
-      .filter(l => l.length > 0)
-      .map(l => l.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s\-']/g, ''));
-    
-    document.getElementById('recognizedAnswerText').value = lines.join('\n');
-    document.getElementById('answerPreview').style.display = 'block';
-    showToast(`识别到 ${lines.length} 个条目`);
-  } catch(e) {
-    hideLoading();
-    showToast('识别失败，请重试');
-  }
-}
-
-function useRecognizedAnswer() {
-  const text = document.getElementById('recognizedAnswerText').value;
-  document.getElementById('answerInput').value = text;
-  document.getElementById('answerPreview').style.display = 'none';
-  updateWordCount();
-  showToast('答案已应用');
-}
-
-function handleAnswerFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const text = e.target.result;
-    document.getElementById('answerInput').value = text;
-    updateWordCount();
-    showToast('文件导入成功');
-  };
-  reader.readAsText(file);
-}
-
-// ===== OCR INIT =====
-async function initOCR() {
-  try {
-    setOcrStatus('loading', '正在加载AI识别引擎...');
-    tesseractWorker = await Tesseract.createWorker('eng+chi_sim', 1, {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          setOcrStatus('loading', `识别中... ${Math.round(m.progress * 100)}%`);
-        }
-      }
-    });
-    
-    // Optimize for handwriting
-    await tesseractWorker.setParameters({
-      tessedit_char_whitelist: '',
-      preserve_interword_spaces: '1',
-      tessedit_pageseg_mode: '6',
-    });
-    
-    ocrReady = true;
-    setOcrStatus('ready', 'AI识别引擎就绪 ✓');
-    document.getElementById('captureBtn').disabled = false;
-  } catch(e) {
-    setOcrStatus('loading', '引擎加载失败，请使用手动输入');
-    console.error('OCR init failed:', e);
-  }
-}
-
-function setOcrStatus(type, text) {
-  const el = document.getElementById('ocrStatus');
-  const spinner = document.getElementById('ocrSpinner');
-  const textEl = document.getElementById('ocrStatusText');
-  el.className = 'ocr-status ' + type;
-  spinner.style.display = type === 'ready' ? 'none' : 'block';
-  textEl.textContent = text;
-}
-
 // ===== CAMERA =====
-async function startCamera() {
-  if (stream) return;
+async function initCamera(facing) {
+  facing = facing || currentFacing;
+  currentFacing = facing;
+  if (stream) { stream.getTracks().forEach(t => t.stop()); }
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
       audio: false
     });
     document.getElementById('videoEl').srcObject = stream;
   } catch(e) {
-    showToast('无法访问摄像头，请允许权限或使用手动输入');
+    showToast('无法访问摄像头：' + e.message);
   }
 }
-
-function stopCamera() {
-  if (stream) {
-    stream.getTracks().forEach(t => t.stop());
-    stream = null;
-    document.getElementById('videoEl').srcObject = null;
-  }
+function switchCamera() {
+  initCamera(currentFacing === 'environment' ? 'user' : 'environment');
 }
 
-// ===== TAB SWITCH =====
-function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach((b,i) => {
-    b.classList.toggle('active', ['setup','scan','stats'][i] === name);
-  });
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-' + name).classList.add('active');
-  
-  if (name === 'scan') {
-    startCamera();
-    stopAnswerCamera();
-  } else if (name === 'setup') {
-    stopCamera();
-    const method = document.querySelector('.method-btn.active')?.id.replace('btn-', '');
-    if (method === 'camera') startAnswerCamera();
-  } else {
-    stopCamera();
-    stopAnswerCamera();
-    renderTaskStats();
-  }
-}
-
-// ===== WORD COUNT =====
-function updateWordCount() {
-  const lines = getAnswerLines();
-  document.getElementById('wordCount').textContent = lines.length;
-}
-
-function getAnswerLines() {
-  return document.getElementById('answerInput').value
-    .split('\n').map(l => l.trim()).filter(l => l.length > 0);
-}
-
-// ===== CAPTURE & OCR =====
-async function captureAndRecognize() {
-  const task = tasks.find(t => t.id === currentTaskId);
-  if (!task || task.answers.length === 0) {
-    showToast('请先在"设置答案"中保存答案');
-    switchTab('setup');
-    return;
-  }
-  
-  if (!ocrReady) { showToast('识别引擎未就绪'); return; }
-  
+// ===== CAPTURE =====
+function capturePhoto() {
   const video = document.getElementById('videoEl');
   const canvas = document.getElementById('canvasEl');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
-  
-  showLoading('AI正在识别手写内容...');
-  try {
-    const { data } = await tesseractWorker.recognize(canvas);
-    hideLoading();
-    currentRecognizedText = data.text;
-    gradeText(data.text, task.answers, data.text);
-  } catch(e) {
-    hideLoading();
-    showToast('识别失败，请重试或使用手动输入');
-  }
+  capturedImageDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+  document.getElementById('photoPreviewImg').src = capturedImageDataUrl;
+  document.getElementById('photoPreviewCard').style.display = 'block';
+
+  showToast('已拍照，AI识别中...');
+  recognizeCurrentPhoto();
 }
 
-// ===== MANUAL GRADE =====
-function gradeManual() {
+async function recognizeCurrentPhoto() {
   const task = tasks.find(t => t.id === currentTaskId);
   if (!task || task.answers.length === 0) {
-    showToast('请先设置答案');
-    switchTab('setup');
-    return;
+    showToast('请先设置答案'); switchTab('setup'); return;
   }
-  
-  const raw = document.getElementById('studentInput').value;
-  if (!raw.trim()) { showToast('请输入学生答案'); return; }
-  
-  currentRecognizedText = raw;
-  gradeText(raw, task.answers, raw);
+  if (!capturedImageDataUrl) { showToast('请先拍照'); return; }
+
+  showLoading('✨ Gemini AI 识别中...');
+  try {
+    const recognizedText = await recognizeWithGemini(capturedImageDataUrl, task.answers);
+    hideLoading();
+    if (!recognizedText) { showToast('识别失败，请重试'); return; }
+    processReview(recognizedText, task.answers);
+  } catch(e) {
+    hideLoading();
+    showToast('识别出错: ' + e.message);
+  }
 }
 
-// ===== GRADING CORE =====
-function gradeText(rawText, answers, displayRaw) {
-  const caseInsensitive = document.getElementById('caseInsensitive').checked;
-  const ignorePunctuation = document.getElementById('ignorePunctuation').checked;
-  const fuzzy = document.getElementById('fuzzyMatch').checked;
-  const strictOrder = document.getElementById('strictOrder').checked;
-  
-  // Parse student answers
-  let studentLines = rawText.split('\n')
-    .map(l => l.trim())
-    .filter(l => l.length > 0);
-  
-  // Clean up lines
-  studentLines = studentLines.map(line => {
-    if (ignorePunctuation) {
-      line = line.replace(/[.,!?;:"'，。！？；："']/g, '');
+function clearPhoto() {
+  capturedImageDataUrl = null;
+  document.getElementById('photoPreviewCard').style.display = 'none';
+  document.getElementById('photoPreviewImg').src = '';
+  showToast('已清除，请重新拍照');
+}
+
+// ===== OCR (含姓名识别) =====
+async function recognizeWithGemini(dataUrl, answers) {
+  if (!geminiConfig.apiKey) {
+    showToast('请先配置 Gemini API Key');
+    throw new Error('未配置Gemini');
+  }
+  const base64 = dataUrl.split(',')[1];
+  const answerCount = answers ? answers.length : '若干';
+  const prompt = `这是一份学生的英语听写作业本页面。
+请完成以下两件事：
+1. 识别页面第一行的学生信息（格式通常是"姓名 学号"或"姓名：xxx 学号：xxx"），输出格式：STUDENT:姓名,学号
+2. 识别听写内容，共${answerCount}行，从第二行开始按顺序每行输出一个单词或短语。
+
+输出格式示例：
+STUDENT:张三,1601
+appreciate
+enthusiasm
+accomplish
+
+只输出以上内容，不要加其他说明。如果某行看不清，输出[?]。如果看不到学生信息，输出STUDENT:,`;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiConfig.apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: 'image/jpeg', data: base64 } }
+          ]
+        }]
+      })
     }
-    return line.trim();
-  }).filter(l => l.length > 0);
-  
-  const results = [];
-  const usedIndices = new Set();
-  
-  if (strictOrder) {
-    // Strict order matching
-    for (let i = 0; i < answers.length; i++) {
-      const answer = answers[i];
-      const written = studentLines[i] || '';
-      const correct = compareWords(answer, written, caseInsensitive, fuzzy);
-      results.push({ answer, written, correct, index: i + 1 });
-    }
-  } else {
-    // Flexible matching - find best match for each answer
-    for (let i = 0; i < answers.length; i++) {
-      const answer = answers[i];
-      let bestMatch = { written: '', correct: false, similarity: 0 };
-      
-      for (let j = 0; j < studentLines.length; j++) {
-        if (usedIndices.has(j)) continue;
-        
-        const written = studentLines[j];
-        const similarity = calculateSimilarity(answer, written, caseInsensitive);
-        const isCorrect = similarity >= (fuzzy ? 0.8 : 1.0);
-        
-        if (similarity > bestMatch.similarity) {
-          bestMatch = { written, correct: isCorrect, similarity };
-          if (isCorrect) {
-            usedIndices.add(j);
-            break;
-          }
-        }
-      }
-      
-      results.push({ 
-        answer, 
-        written: bestMatch.written || '(未找到)', 
-        correct: bestMatch.correct, 
-        index: i + 1 
-      });
-    }
+  );
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  return (data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+}
+
+// ===== 姓名匹配 =====
+function matchStudentFromText(text) {
+  // 解析 STUDENT: 行
+  const stuLine = text.split('\n').find(l => l.startsWith('STUDENT:'));
+  if (!stuLine) return null;
+  const info = stuLine.replace('STUDENT:', '').trim();
+  const [rawName, rawNo] = info.split(',').map(s => s.trim());
+
+  const roster = CLASS_ROSTER[currentClass] || [];
+
+  // 优先按学号精确匹配
+  if (rawNo) {
+    const byNo = roster.find(s => s.no === rawNo);
+    if (byNo) return { ...byNo, autoMatched: true };
   }
-  
-  renderResult(results, displayRaw);
-  saveTaskStats(results);
-  
-  document.getElementById('resultSection').style.display = 'block';
-  document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
-}
 
-// ===== SIMILARITY CALCULATION =====
-function calculateSimilarity(a, b, caseInsensitive) {
-  if (!a || !b) return 0;
-  
-  if (caseInsensitive) {
-    a = a.toLowerCase();
-    b = b.toLowerCase();
+  // 按姓名精确匹配
+  if (rawName) {
+    const byName = roster.find(s => s.name === rawName);
+    if (byName) return { ...byName, autoMatched: true };
   }
-  
-  // Exact match
-  if (a === b) return 1.0;
-  
-  // Levenshtein distance
-  const distance = levenshtein(a, b);
-  const maxLen = Math.max(a.length, b.length);
-  return 1 - (distance / maxLen);
-}
 
-function compareWords(answer, written, caseInsensitive, fuzzy) {
-  if (!written || written === '(未找到)') return false;
-  
-  const similarity = calculateSimilarity(answer, written, caseInsensitive);
-  return fuzzy ? similarity >= 0.8 : similarity >= 1.0;
-}
-
-function levenshtein(a, b) {
-  const m = a.length, n = b.length;
-  if (m === 0) return n;
-  if (n === 0) return m;
-  
-  const dp = Array.from({length: m+1}, () => Array(n+1).fill(0));
-  
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-  
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] = a[i-1] === b[j-1] 
-        ? dp[i-1][j-1] 
-        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
-    }
+  // 模糊匹配姓名（相似度）
+  if (rawName && rawName.length >= 2) {
+    let best = null, bestSim = 0;
+    roster.forEach(s => {
+      const sim = calcSim(s.name, rawName, false);
+      if (sim > bestSim) { bestSim = sim; best = s; }
+    });
+    if (bestSim >= 0.6) return { ...best, autoMatched: true };
   }
-  return dp[m][n];
+
+  // 返回原始识别但未匹配
+  return rawName ? { no: rawNo || '?', name: rawName, autoMatched: false } : null;
 }
 
-// ===== RENDER RESULT =====
-function renderResult(results, rawText) {
-  const correct = results.filter(r => r.correct).length;
-  const total = results.length;
-  const score = Math.round(correct / total * 100);
-  
-  document.getElementById('resultMeta').innerHTML = `
-    <span class="badge badge-score">得分 ${score}%</span>
-    <span class="badge badge-ok">✅ 正确 ${correct}</span>
-    <span class="badge badge-err">❌ 错误 ${total - correct}</span>
-    <span class="badge" style="background:#f8faff;color:#475569;">共 ${total} 词</span>`;
-  
-  document.getElementById('wordsGrid').innerHTML = results.map(r => `
-    <div class="word-chip ${r.correct ? 'correct' : 'wrong'}">
-      <span class="icon">${r.correct ? '✅' : '❌'}</span>
-      <span>${r.answer}</span>
-    </div>`).join('');
-  
-  const wrongs = results.filter(r => !r.correct);
-  const wdEl = document.getElementById('wrongDetail');
-  if (wrongs.length > 0) {
-    wdEl.style.display = 'block';
-    document.getElementById('wrongList').innerHTML = wrongs.map(r => `
-      <div class="wrong-item">
-        <span style="color:var(--muted);font-size:12px;">#${r.index}</span>
-        <span class="written">${r.written}</span>
-        <span class="arrow">→</span>
-        <span class="correct-word">${r.answer}</span>
-      </div>`).join('');
-  } else {
-    wdEl.style.display = 'none';
+// ===== REVIEW =====
+function processReview(recognizedText, answers) {
+  const caseIns = document.getElementById('caseInsensitive').checked;
+
+  // 提取学生信息
+  const stuInfo = matchStudentFromText(recognizedText);
+  if (stuInfo) {
+    currentStudentNo = stuInfo.no;
+    updateStudentDisplay(stuInfo.no, stuInfo.name, stuInfo.autoMatched);
+    renderStuGrid(); // 更新网格选中态
   }
-  
-  document.getElementById('recognizedRaw').textContent = 
-    rawText.substring(0, 500) + (rawText.length > 500 ? '...' : '');
-}
 
-// ===== SAVE TASK STATS =====
-function saveTaskStats(results) {
-  const task = tasks.find(t => t.id === currentTaskId);
-  if (!task) return;
-  
-  const wrongs = results.filter(r => !r.correct);
-  const correct = results.filter(r => r.correct).length;
-  const score = Math.round(correct / results.length * 100);
-  
-  // Update error map
-  wrongs.forEach(r => {
-    task.errorMap[r.answer] = (task.errorMap[r.answer] || 0) + 1;
+  // 去掉STUDENT行，解析答案行
+  const lines = recognizedText.split('\n')
+    .filter(l => !l.startsWith('STUDENT:'))
+    .map(l => l.trim().replace(/^\d+[\.、\-]\s*/, '').replace(/^[•·]\s*/, ''))
+    .filter(l => l.length > 0 && l !== '[?]');
+
+  currentReviewResults = answers.map((answer, i) => {
+    const recognized = lines[i] || '';
+    const sim = calcSim(answer, recognized, caseIns);
+    let status = 'uncertain';
+    if (sim >= 0.88) status = 'correct';
+    else if (sim < 0.45) status = 'wrong';
+    return { index: i + 1, answer, recognized, status, similarity: sim };
   });
-  
-  // Add session
-  task.sessions.push({
-    time: new Date().toLocaleString('zh-CN'),
-    total: results.length,
-    correct,
-    score,
-    wrongs: wrongs.map(r => ({ answer: r.answer, written: r.written }))
-  });
-  
-  saveTasks();
-  renderTaskList();
+
+  renderResultOverlay();
+  openResult();
 }
 
-// ===== RENDER TASK STATS =====
-function renderTaskStats() {
-  const container = document.getElementById('taskStatsList');
-  
-  if (tasks.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>还没有任务</p></div>`;
-    return;
+function renderResultOverlay() {
+  const stu = currentStudentNo
+    ? (CLASS_ROSTER[currentClass]||[]).find(s => s.no === currentStudentNo)
+    : null;
+  const displayName = stu ? `${stu.name}` : (document.getElementById('stuNameInput')?.value || '未知学生');
+  const displayNo   = stu ? stu.no : currentStudentNo || '';
+
+  document.getElementById('rHeaderName').textContent = displayName;
+  // 在header显示学号
+  const headerEl = document.querySelector('.result-header');
+  let noEl = document.getElementById('rHeaderNo');
+  if (!noEl) {
+    noEl = document.createElement('span');
+    noEl.id = 'rHeaderNo';
+    noEl.className = 'result-stu-no';
+    headerEl.querySelector('div').appendChild(noEl);
   }
-  
-  let totalGraded = 0;
-  let totalErrors = 0;
-  
-  const html = tasks.map(task => {
-    const sessionCount = task.sessions?.length || 0;
-    const errorCount = Object.values(task.errorMap || {}).reduce((a, b) => a + b, 0);
-    totalGraded += sessionCount;
-    totalErrors += errorCount;
-    
-    const avgScore = sessionCount > 0 
-      ? Math.round(task.sessions.reduce((s, r) => s + r.score, 0) / sessionCount)
-      : '-';
-    
-    return `<div class="history-item">
-      <div class="history-icon">📝</div>
-      <div class="history-body">
-        <div style="font-weight:600;">${task.name}</div>
-        <div class="info">${task.answers.length} 个答案 · 批改 ${sessionCount} 次</div>
-        <div class="score">平均 ${avgScore}% ${errorCount > 0 ? `· ${errorCount} 个错误` : ''}</div>
+  noEl.textContent = displayNo;
+
+  updateResultStats();
+
+  const listEl = document.getElementById('resultList');
+  listEl.innerHTML = currentReviewResults.map(r => {
+    const icon = r.status === 'correct' ? '✓' : r.status === 'wrong' ? '✗' : '?';
+    return `
+    <div class="result-row ${r.status}" id="rr-${r.index}">
+      <span class="result-idx">${r.index}</span>
+      <span class="result-icon">${icon}</span>
+      <div class="result-words">
+        <div class="result-answer">${r.answer}</div>
+        <div class="result-recognized">${r.recognized || '（未识别）'}</div>
+      </div>
+      <div class="result-toggle">
+        <button class="t-correct" onclick="toggleResult(${r.index},'correct')">✓</button>
+        <button class="t-wrong"   onclick="toggleResult(${r.index},'wrong')">✗</button>
       </div>
     </div>`;
   }).join('');
-  
-  container.innerHTML = html;
-  
-  document.getElementById('totalTasks').textContent = tasks.length;
-  document.getElementById('totalGraded').textContent = totalGraded;
-  document.getElementById('totalErrors').textContent = totalErrors;
-  
-  // Render current task errors
-  renderCurrentTaskErrors();
-}
 
-function renderCurrentTaskErrors() {
-  const task = tasks.find(t => t.id === currentTaskId);
-  const wrap = document.getElementById('errorTableWrap');
-  
-  if (!task || !task.errorMap || Object.keys(task.errorMap).length === 0) {
-    wrap.innerHTML = `<div class="empty-state"><div class="emoji">📊</div><p>暂无错误数据</p></div>`;
-    return;
+  const autoAnnotate = document.getElementById('autoAnnotate')?.checked;
+  if (autoAnnotate && capturedImageDataUrl) {
+    switchResultView('photo');
+  } else {
+    switchResultView('list');
   }
-  
-  const errList = Object.entries(task.errorMap).sort((a, b) => b[1] - a[1]);
-  const maxCount = errList[0][1];
-  
-  wrap.innerHTML = `<table class="error-table">
-    <thead><tr><th>单词/句子</th><th>错误次数</th></tr></thead>
-    <tbody>${errList.map(([word, cnt]) => `
-      <tr>
-        <td><strong>${word}</strong></td>
-        <td>
-          ${cnt} 次
-          <div class="error-bar-wrap"><div class="error-bar" style="width:${Math.round(cnt/maxCount*100)}%"></div></div>
-        </td>
-      </tr>`).join('')}
-    </tbody>
-  </table>`;
 }
 
-// ===== CAPTURE AGAIN =====
-function captureAgain() {
-  document.getElementById('resultSection').style.display = 'none';
-  document.getElementById('studentInput').value = '';
-  window.scrollTo(0, 0);
+function updateResultStats() {
+  const correct = currentReviewResults.filter(r => r.status === 'correct').length;
+  const wrong   = currentReviewResults.filter(r => r.status === 'wrong').length;
+  const uncertain = currentReviewResults.filter(r => r.status === 'uncertain').length;
+  const total   = currentReviewResults.length;
+  const score   = total > 0 ? Math.round(correct / total * 100) : 0;
+
+  document.getElementById('rCorrect').textContent   = correct;
+  document.getElementById('rWrong').textContent     = wrong;
+  document.getElementById('rUncertain').textContent = uncertain;
+  document.getElementById('rTotal').textContent     = total;
+  document.getElementById('rScoreBadge').textContent = `${score}%`;
 }
 
-// ===== LOADING =====
+function toggleResult(index, status) {
+  const item = currentReviewResults.find(r => r.index === index);
+  if (!item) return;
+  item.status = status;
+  const el = document.getElementById(`rr-${index}`);
+  const icon = status === 'correct' ? '✓' : '✗';
+  el.className = `result-row ${status}`;
+  el.querySelector('.result-icon').textContent = icon;
+  updateResultStats();
+  if (document.getElementById('btnViewPhoto').classList.contains('active')) {
+    drawAnnotations();
+  }
+}
+
+function confirmAllCorrect() {
+  currentReviewResults.forEach(r => { if (r.status === 'uncertain') r.status = 'correct'; });
+  renderResultOverlay();
+  showToast('已将待确认项全部标为正确');
+}
+
+// ===== PHOTO ANNOTATE =====
+function switchResultView(mode) {
+  const listEl = document.getElementById('resultList');
+  const photoEl = document.getElementById('photoAnnotateWrap');
+  const btnList = document.getElementById('btnViewList');
+  const btnPhoto = document.getElementById('btnViewPhoto');
+
+  if (mode === 'list') {
+    listEl.style.display = 'block';
+    photoEl.style.display = 'none';
+    btnList.classList.add('active');
+    btnPhoto.classList.remove('active');
+  } else {
+    listEl.style.display = 'none';
+    photoEl.style.display = 'block';
+    btnList.classList.remove('active');
+    btnPhoto.classList.add('active');
+    drawAnnotations();
+  }
+}
+
+function drawAnnotations() {
+  if (!capturedImageDataUrl) { showToast('没有可标注的照片'); return; }
+  const canvas = document.getElementById('annotateCanvas');
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  img.onload = () => {
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    const total = currentReviewResults.length;
+    if (total === 0) return;
+    const usableH = img.height * 0.72;
+    const startY  = img.height * 0.16;
+    const lineH   = usableH / total;
+    const fontSize = Math.max(36, Math.min(lineH * 0.65, 72));
+    ctx.font = `900 ${fontSize}px Arial, sans-serif`;
+    ctx.lineWidth = fontSize * 0.08;
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 6;
+    currentReviewResults.forEach((r, i) => {
+      const y = startY + lineH * i + lineH * 0.5;
+      const icon = r.status === 'correct' ? '✓' : r.status === 'wrong' ? '✗' : '?';
+      const color = r.status === 'correct' ? '#16a34a' : r.status === 'wrong' ? '#dc2626' : '#d97706';
+      const x = img.width * 0.92;
+      ctx.strokeStyle = 'white';
+      ctx.strokeText(icon, x, y);
+      ctx.fillStyle = color;
+      ctx.fillText(icon, x, y);
+    });
+    ctx.shadowBlur = 0;
+  };
+  img.src = capturedImageDataUrl;
+}
+
+// ===== SAVE & NEXT =====
+function saveAndNext() {
+  const task = tasks.find(t => t.id === currentTaskId);
+  if (!task) return;
+
+  // 决定学生信息
+  let stuNo = currentStudentNo;
+  let stuName;
+  const stu = stuNo ? (CLASS_ROSTER[currentClass]||[]).find(s => s.no === stuNo) : null;
+  if (stu) {
+    stuName = stu.name;
+  } else {
+    stuName = document.getElementById('stuNameInput')?.value?.trim()
+      || `学生${(task.students?.length || 0) + 1}`;
+    stuNo = stuNo || null;
+  }
+
+  const correct = currentReviewResults.filter(r => r.status === 'correct').length;
+  const wrong   = currentReviewResults.filter(r => r.status === 'wrong').length;
+  const score   = currentReviewResults.length > 0
+    ? Math.round(correct / currentReviewResults.length * 100) : 0;
+
+  currentReviewResults.filter(r => r.status === 'wrong').forEach(r => {
+    task.errorMap[r.answer] = (task.errorMap[r.answer] || 0) + 1;
+  });
+
+  task.students.push({
+    name: stuName, studentNo: stuNo, classId: currentClass,
+    time: new Date().toLocaleString('zh-CN'),
+    correct, wrong, score,
+    details: JSON.parse(JSON.stringify(currentReviewResults))
+  });
+
+  saveTasks();
+  renderTaskList();
+  renderStuGrid();
+  updateProgressBar();
+  showToast(`✅ ${stuName}（${stuNo||'?'}）已保存，得分 ${score}%`);
+
+  // 重置
+  currentStudentNo = null;
+  document.getElementById('stuMatchName').textContent = '—';
+  document.getElementById('stuMatchNo').textContent = '—';
+  document.getElementById('stuMatchBox').style.display = 'flex';
+  document.getElementById('stuManualBox').style.display = 'none';
+  if (document.getElementById('stuNameInput')) document.getElementById('stuNameInput').value = '';
+  capturedImageDataUrl = null;
+  document.getElementById('photoPreviewCard').style.display = 'none';
+  currentReviewResults = [];
+  closeResult();
+}
+
+function openResult() {
+  document.getElementById('resultOverlay').classList.add('show');
+  document.getElementById('resultOverlay').scrollTop = 0;
+}
+function closeResult() {
+  document.getElementById('resultOverlay').classList.remove('show');
+}
+
+// ===== STATS =====
+function renderStats() {
+  const task = tasks.find(t => t.id === currentTaskId);
+  document.getElementById('statTasks').textContent = tasks.length;
+  document.getElementById('statStudents').textContent = task?.students?.length || 0;
+  const totalErr = Object.values(task?.errorMap || {}).reduce((a,b) => a+b, 0);
+  document.getElementById('statErrors').textContent = totalErr;
+
+  const errList = Object.entries(task?.errorMap || {}).sort((a,b) => b[1]-a[1]).slice(0,10);
+  document.getElementById('errorStats').innerHTML = errList.length > 0
+    ? errList.map(([w,c]) => `
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);">
+          <span style="font-weight:600;">${w}</span>
+          <span style="color:var(--error);font-weight:700;">${c} 次</span>
+        </div>`).join('')
+    : '<div style="text-align:center;color:var(--muted);padding:20px;">暂无错误数据</div>';
+
+  const students = (task?.students || []).slice().reverse().slice(0, 20);
+  document.getElementById('reviewHistory').innerHTML = students.length > 0
+    ? students.map(s => `
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:11px;color:var(--muted);min-width:38px;">${s.studentNo||''}</span>
+          <span style="font-weight:600;flex:1;">${s.name}</span>
+          <span style="background:${s.score>=90?'#f0fdf4':s.score>=60?'#fefce8':'#fef2f2'};
+            color:${s.score>=90?'#16a34a':s.score>=60?'#d97706':'#dc2626'};
+            font-weight:800;padding:3px 10px;border-radius:12px;">${s.score}%</span>
+          <span style="font-size:12px;color:var(--muted);">✅${s.correct} ❌${s.wrong}</span>
+        </div>`).join('')
+    : '<div style="text-align:center;color:var(--muted);padding:20px;">还没有批改记录</div>';
+}
+
+// ===== LEADERBOARD =====
+function renderLeaderboard() {
+  const task = tasks.find(t => t.id === currentTaskId);
+  if (!task) return;
+
+  const roster = CLASS_ROSTER[currentClass] || [];
+  const scoreMap = {};
+  (task.students || [])
+    .filter(s => s.classId === currentClass || !s.classId)
+    .forEach(s => {
+      const key = s.studentNo || s.name;
+      if (!scoreMap[key] || s.score > scoreMap[key].score) {
+        scoreMap[key] = { score: s.score, name: s.name, no: s.studentNo };
+      }
+    });
+
+  const ranked = Object.values(scoreMap)
+    .sort((a,b) => b.score - a.score)
+    .map((s, i) => ({ rank: i+1, ...s }));
+
+  const lbEl = document.getElementById('leaderboard');
+  if (ranked.length === 0) {
+    lbEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">暂无数据</div>';
+  } else {
+    lbEl.innerHTML = ranked.map(r => {
+      const rankIcon = r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `#${r.rank}`;
+      const badgeHtml = r.rank <= 3
+        ? `<span class="lb-badge top3">🎁 获奖</span>`
+        : r.rank <= rewardTop
+          ? `<span class="lb-badge top5">🏅 获奖</span>`
+          : '';
+      return `
+      <div class="lb-row">
+        <span class="lb-rank ${r.rank===1?'gold':r.rank===2?'silver':r.rank===3?'bronze':''}">${rankIcon}</span>
+        <span style="font-size:11px;color:var(--muted);min-width:38px;">${r.no||''}</span>
+        <span class="lb-name">${r.name}</span>
+        ${badgeHtml}
+        <span class="lb-score">${r.score}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  // 未批名单
+  const doneSets = new Set(Object.keys(scoreMap));
+  const pending = roster.filter(s => !doneSets.has(s.no) && !doneSets.has(s.name));
+  const pendingEl = document.getElementById('pendingList');
+  pendingEl.innerHTML = pending.length > 0
+    ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">共 ${pending.length} 人未批改</div>
+       <div class="pending-grid">${pending.map(s => `
+        <div class="pending-chip">
+          <span class="pno">${s.no}</span>
+          <span class="pname">${s.name}</span>
+        </div>`).join('')}</div>`
+    : '<div style="text-align:center;color:#16a34a;font-weight:700;padding:16px;">🎉 全班已批改完成！</div>';
+
+  // 薄弱词
+  const weakList = Object.entries(task.errorMap || {}).sort((a,b) => b[1]-a[1]).slice(0,8);
+  document.getElementById('weakWords').innerHTML = weakList.length > 0
+    ? weakList.map(([w,c]) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);">
+          <span style="flex:1;font-weight:700;font-size:15px;">${w}</span>
+          <div style="background:#fef2f2;color:#dc2626;font-weight:800;padding:3px 12px;border-radius:12px;">${c}人错</div>
+        </div>`).join('')
+    : '<div style="text-align:center;color:var(--muted);padding:16px;">暂无数据</div>';
+}
+
+// ===== UTILS =====
+function calcSim(a, b, caseIns) {
+  if (!a || !b) return 0;
+  if (caseIns) { a = a.toLowerCase(); b = b.toLowerCase(); }
+  a = a.trim().replace(/[.,!?;:'"，。！？；：'"]/g, '');
+  b = b.trim().replace(/[.,!?;:'"，。！？；：'"]/g, '');
+  if (a === b) return 1;
+  const dist = levenshtein(a, b);
+  return 1 - dist / Math.max(a.length, b.length);
+}
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, (_,i) => Array(n+1).fill(0).map((_,j) => j===0?i:0));
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+function getAnswerLines() {
+  return document.getElementById('answerInput').value
+    .split('\n').map(l => l.trim()).filter(l => l.length > 0);
+}
+function updateWordCount() {
+  document.getElementById('wordCount').textContent = getAnswerLines().length;
+}
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['setup','scan','stats','rank'][i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'stats') renderStats();
+  if (name === 'rank') renderLeaderboard();
+}
 function showLoading(msg) {
-  document.getElementById('loadingMsg').textContent = msg || '处理中...';
+  document.getElementById('loadingMsg').textContent = msg || 'AI识别中...';
   document.getElementById('loadingOverlay').classList.add('show');
 }
-
 function hideLoading() {
   document.getElementById('loadingOverlay').classList.remove('show');
 }
-
-// ===== TOAST =====
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
