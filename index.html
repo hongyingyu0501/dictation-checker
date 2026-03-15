@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>英语听写批改助手</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #4f8ef7;
+      --primary-dark: #3a6fd8;
+      --success: #22c55e;
+      --error: #ef4444;
+      --bg: #f0f4ff;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 14px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      background: linear-gradient(135deg, #4f8ef7 0%, #7c63f5 100%);
+      color: white;
+      padding: 16px 20px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 12px rgba(79,142,247,.35);
+    }
+    header .logo { font-size: 28px; }
+    header h1 { font-size: 18px; font-weight: 700; letter-spacing: .3px; }
+    header p  { font-size: 12px; opacity: .85; margin-top: 2px; }
+
+    /* ===== TABS ===== */
+    .tabs {
+      display: flex;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .tab-btn {
+      flex: 1; padding: 13px 4px; font-size: 13px; font-weight: 600;
+      color: var(--muted); border: none; background: none; cursor: pointer;
+      border-bottom: 3px solid transparent; transition: all .2s;
+    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ===== PANELS ===== */
+    .panel { display: none; padding: 16px; }
+    .panel.active { display: block; }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: var(--card); border-radius: var(--radius);
+      padding: 18px; margin-bottom: 16px;
+      box-shadow: 0 1px 6px rgba(0,0,0,.07);
+    }
+    .card-title {
+      font-size: 14px; font-weight: 700; color: var(--text);
+      margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+    }
+
+    /* ===== ANSWER INPUT ===== */
+    textarea {
+      width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+      padding: 12px; font-size: 15px; resize: vertical; min-height: 130px;
+      font-family: inherit; color: var(--text); outline: none; transition: border .2s;
+      line-height: 1.65;
+    }
+    textarea:focus { border-color: var(--primary); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 7px; padding: 13px 20px; border-radius: 11px; font-size: 15px;
+      font-weight: 600; border: none; cursor: pointer; transition: all .2s;
+      width: 100%;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-secondary {
+      background: var(--bg); color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .btn-row { display: flex; gap: 10px; }
+    .btn-row .btn { flex: 1; }
+
+    /* ===== CAMERA ===== */
+    .camera-wrap {
+      position: relative; background: #000; border-radius: 12px;
+      overflow: hidden; aspect-ratio: 4/3; width: 100%;
+    }
+    #videoEl {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .camera-overlay {
+      position: absolute; inset: 0; pointer-events: none;
+    }
+    .scan-frame {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-55%);
+      width: 88%; height: 55%; border: 2px solid rgba(79,142,247,.8);
+      border-radius: 8px; box-shadow: 0 0 0 2000px rgba(0,0,0,.35);
+    }
+    .scan-line {
+      position: absolute; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, #4f8ef7, transparent);
+      animation: scanMove 2s linear infinite;
+    }
+    @keyframes scanMove {
+      0%   { top: 5%; }
+      50%  { top: 90%; }
+      100% { top: 5%; }
+    }
+    .scan-hint {
+      position: absolute; bottom: 10px; left: 0; right: 0;
+      text-align: center; color: white; font-size: 12px;
+      text-shadow: 0 1px 3px rgba(0,0,0,.6);
+    }
+    #canvasEl { display: none; }
+
+    /* ===== OCR STATUS ===== */
+    .ocr-status {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; border-radius: 10px;
+      background: #f8faff; border: 1px solid #dce8ff;
+      font-size: 13px; color: var(--muted); margin-bottom: 14px;
+    }
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid #c7d9ff;
+      border-top-color: var(--primary); border-radius: 50%;
+      animation: spin .7s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ocr-status.ready   { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+    .ocr-status.loading { background: #f8faff; border-color: #dce8ff; color: var(--muted); }
+
+    /* ===== RESULT ===== */
+    .result-meta {
+      display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+    }
+    .badge {
+      padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    }
+    .badge-score { background: #eff6ff; color: #1d4ed8; }
+    .badge-ok    { background: #f0fdf4; color: #15803d; }
+    .badge-err   { background: #fef2f2; color: #dc2626; }
+
+    .words-grid {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+    }
+    .word-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: 600;
+    }
+    .word-chip.correct { background: #f0fdf4; color: #15803d; border: 1.5px solid #bbf7d0; }
+    .word-chip.wrong   { background: #fef2f2; color: #dc2626; border: 1.5px solid #fecaca; }
+    .word-chip .icon { font-size: 14px; }
+
+    .wrong-detail {
+      background: #fef9f0; border: 1.5px solid #fed7aa; border-radius: 10px;
+      padding: 14px; margin-bottom: 16px;
+    }
+    .wrong-detail h4 { font-size: 13px; color: #c2410c; margin-bottom: 10px; }
+    .wrong-item {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+      font-size: 14px; padding: 7px 10px; background: white;
+      border-radius: 8px;
+    }
+    .wrong-item .written { color: var(--error); text-decoration: line-through; font-weight: 600; }
+    .wrong-item .arrow   { color: var(--muted); }
+    .wrong-item .correct-word { color: var(--success); font-weight: 700; }
+
+    .recognized-text {
+      background: #f8faff; border-radius: 10px; padding: 12px;
+      font-size: 13px; color: var(--muted); border: 1px solid #e0e9ff;
+      margin-bottom: 14px; word-break: break-all; line-height: 1.7;
+    }
+    .recognized-text strong { color: var(--text); display: block; margin-bottom: 4px; }
+
+    /* ===== STATS ===== */
+    .stats-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .stats-summary {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
+      margin-bottom: 18px;
+    }
+    .stat-box {
+      background: var(--card); border-radius: 12px; padding: 14px 10px;
+      text-align: center; box-shadow: 0 1px 5px rgba(0,0,0,.07);
+    }
+    .stat-box .num  { font-size: 26px; font-weight: 800; }
+    .stat-box .lbl  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .stat-box.blue  .num { color: var(--primary); }
+    .stat-box.green .num { color: var(--success); }
+    .stat-box.red   .num { color: var(--error); }
+
+    .error-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .error-table th {
+      background: #f1f5fe; padding: 9px 12px; text-align: left;
+      font-weight: 700; font-size: 12px; color: var(--muted);
+    }
+    .error-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); }
+    .error-table tr:last-child td { border-bottom: none; }
+    .error-bar-wrap { background: #f1f5f9; border-radius: 20px; height: 7px; width: 100%; margin-top: 4px; }
+    .error-bar      { height: 7px; border-radius: 20px; background: var(--error); transition: width .4s; }
+
+    .empty-state {
+      text-align: center; padding: 40px 20px; color: var(--muted);
+    }
+    .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ===== HISTORY ===== */
+    .history-item {
+      background: var(--card); border-radius: 12px; padding: 14px;
+      margin-bottom: 10px; box-shadow: 0 1px 5px rgba(0,0,0,.07);
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .history-icon { font-size: 28px; }
+    .history-body { flex: 1; }
+    .history-body .time  { font-size: 11px; color: var(--muted); }
+    .history-body .score { font-size: 16px; font-weight: 800; color: var(--primary); }
+    .history-body .info  { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: #1e293b; color: white; padding: 12px 22px; border-radius: 30px;
+      font-size: 14px; z-index: 999; transition: transform .3s, opacity .3s;
+      opacity: 0; white-space: nowrap; pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* ===== LOADING OVERLAY ===== */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,.55); z-index: 200;
+      align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+    }
+    .overlay.show { display: flex; }
+    .overlay .big-spinner {
+      width: 52px; height: 52px; border: 4px solid rgba(255,255,255,.25);
+      border-top-color: white; border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    .overlay p { color: white; font-size: 15px; font-weight: 600; }
+
+    /* tip tag */
+    .tip-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #fffbeb; border: 1px solid #fde68a;
+      color: #92400e; font-size: 11px; padding: 3px 9px;
+      border-radius: 20px; margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="overlay" id="loadingOverlay">
+  <div class="big-spinner"></div>
+  <p id="loadingMsg">正在识别手写文字...</p>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Header -->
+<header>
+  <div class="logo">📝</div>
+  <div>
+    <h1>听写批改助手</h1>
+    <p>高中英语 · 手写识别 · 自动批改</p>
+  </div>
+</header>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('setup')">✏️ 设置答案</button>
+  <button class="tab-btn" onclick="switchTab('scan')">📷 扫描批改</button>
+  <button class="tab-btn" onclick="switchTab('stats')">📊 错误统计</button>
+</div>
+
+<!-- ====== TAB 1: 设置答案 ====== -->
+<div class="panel active" id="panel-setup">
+  <div class="card">
+    <div class="card-title">📋 本次听写单词/句子</div>
+    <div class="tip-tag">💡 每行一个单词或词组，支持短句</div>
+    <textarea id="answerInput" placeholder="例如：
+appreciate
+enthusiasm
+accomplish
+make progress
+be responsible for
+..."></textarea>
+    <div class="hint">共 <span id="wordCount">0</span> 个词条 · 每行一个</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚙️ 识别设置</div>
+    <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:12px;">
+      <input type="checkbox" id="caseInsensitive" checked style="width:18px;height:18px;accent-color:var(--primary)">
+      大小写不敏感（推荐）
+    </label>
+    <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:12px;">
+      <input type="checkbox" id="fuzzyMatch" checked style="width:18px;height:18px;accent-color:var(--primary)">
+      模糊匹配（允许1个字母差错）
+    </label>
+    <label style="display:flex;align-items:center;gap:10px;font-size:14px;">
+      <input type="checkbox" id="autoNext" style="width:18px;height:18px;accent-color:var(--primary)">
+      拍照后自动跳转结果页
+    </label>
+  </div>
+
+  <button class="btn btn-primary" onclick="switchTab('scan')">
+    📷 开始扫描批改
+  </button>
+</div>
+
+<!-- ====== TAB 2: 扫描批改 ====== -->
+<div class="panel" id="panel-scan">
+  <!-- OCR状态 -->
+  <div class="ocr-status loading" id="ocrStatus">
+    <div class="spinner" id="ocrSpinner"></div>
+    <span id="ocrStatusText">正在加载识别引擎…</span>
+  </div>
+
+  <!-- 摄像头 -->
+  <div class="card">
+    <div class="card-title">📷 对准手写听写本</div>
+    <div class="camera-wrap">
+      <video id="videoEl" autoplay playsinline muted></video>
+      <div class="camera-overlay">
+        <div class="scan-frame">
+          <div class="scan-line"></div>
+        </div>
+        <div class="scan-hint">将手写内容放入框内，保持稳定</div>
+      </div>
+    </div>
+    <canvas id="canvasEl"></canvas>
+    <div style="margin-top:12px;">
+      <button class="btn btn-primary" id="captureBtn" onclick="captureAndRecognize()" disabled>
+        📸 拍照识别
+      </button>
+    </div>
+  </div>
+
+  <!-- 手动输入备用 -->
+  <div class="card">
+    <div class="card-title">⌨️ 或手动输入学生答案</div>
+    <textarea id="studentInput" placeholder="如摄像头识别不准，可直接在此输入学生写的内容（每行一个）..." style="min-height:90px;"></textarea>
+    <div style="margin-top:10px;">
+      <button class="btn btn-success" onclick="gradeManual()">
+        ✅ 立即批改
+      </button>
+    </div>
+  </div>
+
+  <!-- 识别结果展示 -->
+  <div id="resultSection" style="display:none;">
+    <div class="card">
+      <div class="card-title">🎯 批改结果</div>
+
+      <div class="recognized-text" id="recognizedTextBox">
+        <strong>识别文字：</strong>
+        <span id="recognizedRaw"></span>
+      </div>
+
+      <div class="result-meta" id="resultMeta"></div>
+      <div class="words-grid" id="wordsGrid"></div>
+
+      <div class="wrong-detail" id="wrongDetail" style="display:none;">
+        <h4>❌ 错误详情</h4>
+        <div id="wrongList"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="captureAgain()">🔄 再批一张</button>
+        <button class="btn btn-primary" onclick="switchTab('stats')">📊 查看统计</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TAB 3: 错误统计 ====== -->
+<div class="panel" id="panel-stats">
+  <div class="stats-summary">
+    <div class="stat-box blue">
+      <div class="num" id="totalSessions">0</div>
+      <div class="lbl">批改次数</div>
+    </div>
+    <div class="stat-box green">
+      <div class="num" id="avgScore">-</div>
+      <div class="lbl">平均得分</div>
+    </div>
+    <div class="stat-box red">
+      <div class="num" id="totalErrors">0</div>
+      <div class="lbl">总错误数</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="stats-header">
+      <div class="card-title" style="margin:0">🔴 常见错误单词</div>
+      <button class="btn btn-secondary" onclick="clearStats()" style="width:auto;padding:7px 14px;font-size:12px;">清除数据</button>
+    </div>
+    <div id="errorTableWrap">
+      <div class="empty-state">
+        <div class="emoji">📭</div>
+        <p>还没有统计数据<br>先去批改几份听写吧~</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📅 批改历史</div>
+    <div id="historyList">
+      <div class="empty-state">
+        <div class="emoji">📖</div>
+        <p>暂无批改记录</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SCRIPTS ========== -->
+<!-- Tesseract.js OCR (免费开源) -->
+<script src="https://unpkg.com/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
+
+<script>
+// ===== STATE =====
+let stream = null;
+let tesseractWorker = null;
+let ocrReady = false;
+let stats = JSON.parse(localStorage.getItem('dictation_stats') || '{"sessions":[],"errorMap":{}}');
+
+// ===== INIT =====
+window.addEventListener('DOMContentLoaded', () => {
+  initOCR();
+  updateWordCount();
+  document.getElementById('answerInput').addEventListener('input', updateWordCount);
+  renderStats();
+});
+
+// ===== OCR INIT =====
+async function initOCR() {
+  try {
+    setOcrStatus('loading', '正在加载手写识别引擎（首次约30秒）…');
+    tesseractWorker = await Tesseract.createWorker('eng', 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          // progress update handled in captureAndRecognize
+        }
+      }
+    });
+    // 配置适合手写英文识别的参数
+    await tesseractWorker.setParameters({
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz \'-',
+      preserve_interword_spaces: '1',
+    });
+    ocrReady = true;
+    setOcrStatus('ready', '识别引擎就绪 ✓ 可以开始批改');
+    document.getElementById('captureBtn').disabled = false;
+  } catch(e) {
+    setOcrStatus('loading', '引擎加载失败，请使用手动输入模式');
+    console.error('OCR init failed:', e);
+  }
+}
+
+function setOcrStatus(type, text) {
+  const el = document.getElementById('ocrStatus');
+  const spinner = document.getElementById('ocrSpinner');
+  const textEl = document.getElementById('ocrStatusText');
+  el.className = 'ocr-status ' + type;
+  spinner.style.display = type === 'ready' ? 'none' : 'block';
+  textEl.textContent = text;
+}
+
+// ===== CAMERA =====
+async function startCamera() {
+  if (stream) return;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    });
+    document.getElementById('videoEl').srcObject = stream;
+  } catch(e) {
+    showToast('无法访问摄像头，请允许权限或使用手动输入');
+  }
+}
+
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    document.getElementById('videoEl').srcObject = null;
+  }
+}
+
+// ===== TAB SWITCH =====
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['setup','scan','stats'][i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'scan') startCamera();
+  else stopCamera();
+  if (name === 'stats') renderStats();
+}
+
+// ===== WORD COUNT =====
+function updateWordCount() {
+  const lines = getAnswerLines();
+  document.getElementById('wordCount').textContent = lines.length;
+}
+
+function getAnswerLines() {
+  return document.getElementById('answerInput').value
+    .split('\n').map(l => l.trim()).filter(l => l.length > 0);
+}
+
+// ===== CAPTURE & OCR =====
+async function captureAndRecognize() {
+  if (!ocrReady) { showToast('识别引擎未就绪，请稍等…'); return; }
+  const answers = getAnswerLines();
+  if (answers.length === 0) { showToast('请先在"设置答案"中输入标准答案'); switchTab('setup'); return; }
+
+  const video = document.getElementById('videoEl');
+  const canvas = document.getElementById('canvasEl');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  showLoading('正在识别手写文字，请稍候…');
+  try {
+    const { data } = await tesseractWorker.recognize(canvas);
+    hideLoading();
+    const rawText = data.text;
+    gradeText(rawText, answers, rawText);
+  } catch(e) {
+    hideLoading();
+    showToast('识别失败，请重试或使用手动输入');
+    console.error(e);
+  }
+}
+
+// ===== MANUAL GRADE =====
+function gradeManual() {
+  const answers = getAnswerLines();
+  if (answers.length === 0) { showToast('请先设置标准答案'); switchTab('setup'); return; }
+  const raw = document.getElementById('studentInput').value;
+  if (!raw.trim()) { showToast('请输入学生的答案'); return; }
+  gradeText(raw, answers, raw);
+}
+
+// ===== GRADING CORE =====
+function gradeText(rawText, answers, displayRaw) {
+  const caseInsensitive = document.getElementById('caseInsensitive').checked;
+  const fuzzy = document.getElementById('fuzzyMatch').checked;
+
+  // 解析学生答案：每行一个
+  const studentLines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  const results = [];
+  const maxLen = Math.max(answers.length, studentLines.length);
+
+  for (let i = 0; i < answers.length; i++) {
+    const answer = answers[i];
+    const written = studentLines[i] || '';
+    const correct = compareWords(answer, written, caseInsensitive, fuzzy);
+    results.push({ answer, written, correct, index: i + 1 });
+  }
+
+  // 渲染结果
+  renderResult(results, displayRaw);
+
+  // 保存统计
+  saveStats(results);
+
+  // 显示结果区
+  document.getElementById('resultSection').style.display = 'block';
+  document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+
+  if (document.getElementById('autoNext').checked) {
+    setTimeout(() => switchTab('stats'), 1500);
+  }
+}
+
+// ===== COMPARE =====
+function compareWords(answer, written, caseInsensitive, fuzzy) {
+  if (!written) return false;
+  let a = answer.trim(), w = written.trim();
+  if (caseInsensitive) { a = a.toLowerCase(); w = w.toLowerCase(); }
+  if (a === w) return true;
+  if (fuzzy && levenshtein(a, w) <= 1) return true;
+  return false;
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, (_, i) => Array.from({length: n+1}, (_, j) => i === 0 ? j : j === 0 ? i : 0));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+// ===== RENDER RESULT =====
+function renderResult(results, rawText) {
+  const correct = results.filter(r => r.correct).length;
+  const total   = results.length;
+  const score   = Math.round(correct / total * 100);
+
+  // meta
+  const meta = document.getElementById('resultMeta');
+  meta.innerHTML = `
+    <span class="badge badge-score">得分 ${score}%</span>
+    <span class="badge badge-ok">✅ 正确 ${correct}</span>
+    <span class="badge badge-err">❌ 错误 ${total - correct}</span>
+    <span class="badge" style="background:#f8faff;color:#475569;">共 ${total} 词</span>`;
+
+  // words grid
+  const grid = document.getElementById('wordsGrid');
+  grid.innerHTML = results.map(r => `
+    <div class="word-chip ${r.correct ? 'correct' : 'wrong'}">
+      <span class="icon">${r.correct ? '✅' : '❌'}</span>
+      <span>${r.answer}</span>
+    </div>`).join('');
+
+  // wrong detail
+  const wrongs = results.filter(r => !r.correct);
+  const wdEl = document.getElementById('wrongDetail');
+  const wlEl = document.getElementById('wrongList');
+  if (wrongs.length > 0) {
+    wdEl.style.display = 'block';
+    wlEl.innerHTML = wrongs.map(r => `
+      <div class="wrong-item">
+        <span style="color:var(--muted);font-size:12px;">#${r.index}</span>
+        <span class="written">${r.written || '(未写)'}</span>
+        <span class="arrow">→</span>
+        <span class="correct-word">${r.answer}</span>
+      </div>`).join('');
+  } else {
+    wdEl.style.display = 'none';
+  }
+
+  // raw text
+  document.getElementById('recognizedRaw').textContent = rawText.substring(0, 300) + (rawText.length > 300 ? '…' : '');
+}
+
+// ===== SAVE STATS =====
+function saveStats(results) {
+  const wrongs = results.filter(r => !r.correct);
+  const correct = results.filter(r => r.correct).length;
+  const score = Math.round(correct / results.length * 100);
+
+  // update error map
+  wrongs.forEach(r => {
+    stats.errorMap[r.answer] = (stats.errorMap[r.answer] || 0) + 1;
+  });
+
+  // push session
+  stats.sessions.push({
+    time: new Date().toLocaleString('zh-CN'),
+    total: results.length,
+    correct,
+    score,
+    wrongs: wrongs.map(r => r.answer)
+  });
+
+  localStorage.setItem('dictation_stats', JSON.stringify(stats));
+}
+
+// ===== RENDER STATS =====
+function renderStats() {
+  const sessions = stats.sessions;
+  document.getElementById('totalSessions').textContent = sessions.length;
+
+  if (sessions.length > 0) {
+    const avg = Math.round(sessions.reduce((s,r) => s + r.score, 0) / sessions.length);
+    document.getElementById('avgScore').textContent = avg + '%';
+    document.getElementById('totalErrors').textContent =
+      sessions.reduce((s,r) => s + (r.total - r.correct), 0);
+  }
+
+  // error table
+  const errMap = stats.errorMap;
+  const errList = Object.entries(errMap).sort((a,b) => b[1]-a[1]);
+  const wrap = document.getElementById('errorTableWrap');
+  if (errList.length === 0) {
+    wrap.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>还没有统计数据<br>先去批改几份听写吧~</p></div>`;
+  } else {
+    const maxCount = errList[0][1];
+    wrap.innerHTML = `<table class="error-table">
+      <thead><tr><th>单词</th><th>错误次数</th></tr></thead>
+      <tbody>${errList.map(([word, cnt]) => `
+        <tr>
+          <td><strong>${word}</strong></td>
+          <td>
+            ${cnt} 次
+            <div class="error-bar-wrap"><div class="error-bar" style="width:${Math.round(cnt/maxCount*100)}%"></div></div>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  // history
+  const histEl = document.getElementById('historyList');
+  if (sessions.length === 0) {
+    histEl.innerHTML = `<div class="empty-state"><div class="emoji">📖</div><p>暂无批改记录</p></div>`;
+  } else {
+    histEl.innerHTML = [...sessions].reverse().slice(0, 20).map(s => `
+      <div class="history-item">
+        <div class="history-icon">${s.score >= 80 ? '🎉' : s.score >= 60 ? '📝' : '😅'}</div>
+        <div class="history-body">
+          <div class="time">${s.time}</div>
+          <div class="score">${s.score}%</div>
+          <div class="info">共 ${s.total} 词 · 正确 ${s.correct} · 错误 ${s.total - s.correct}</div>
+          ${s.wrongs.length > 0 ? `<div class="info" style="margin-top:4px;color:var(--error);">错：${s.wrongs.join('、')}</div>` : ''}
+        </div>
+      </div>`).join('');
+  }
+}
+
+// ===== CAPTURE AGAIN =====
+function captureAgain() {
+  document.getElementById('resultSection').style.display = 'none';
+  document.getElementById('studentInput').value = '';
+  window.scrollTo(0, 0);
+}
+
+// ===== CLEAR STATS =====
+function clearStats() {
+  if (!confirm('确定清除所有统计数据？')) return;
+  stats = { sessions: [], errorMap: {} };
+  localStorage.setItem('dictation_stats', JSON.stringify(stats));
+  renderStats();
+  document.getElementById('totalSessions').textContent = '0';
+  document.getElementById('avgScore').textContent = '-';
+  document.getElementById('totalErrors').textContent = '0';
+  showToast('数据已清除');
+}
+
+// ===== LOADING =====
+function showLoading(msg) {
+  document.getElementById('loadingMsg').textContent = msg || '处理中…';
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('show');
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
